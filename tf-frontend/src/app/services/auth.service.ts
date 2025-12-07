@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of, BehaviorSubject } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
+import { environment } from '../../environments/environment';
 
 export interface User {
   id: number;
@@ -68,7 +69,7 @@ export interface CvAnalysisResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private baseUrl = 'http://localhost:8000/api/v1';
+  private baseUrl = environment.apiUrl;
 
   // 🆕 AGREGADO: BehaviorSubject para estado de autenticación
   private isLoggedInSubject = new BehaviorSubject<boolean>(false);
