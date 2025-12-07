@@ -1,0 +1,56 @@
+# Python
+APIs/JobsAPI/venv
+APIs/UserAPI/venv
+APIs/MatcheoAPI/venv
+APIs/CvAnalyzerAPI/venv
+APIs/AssistantAPI/venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info
+venv/
+env/
+
+# Environment variables (IMPORTANTE - contienen secretos)
+.env
+*.env
+.env.local
+.env.*.local
+
+# Angular / Node.js
+tf-frontend/node_modules/
+tf-frontend/dist/
+tf-frontend/.angular/
+tf-frontend/npm-debug.log*
+tf-frontend/yarn-error.log*
+tf-frontend/package-lock.json
+
+# User uploaded files (no commitear archivos de usuarios)
+APIs/UserAPI/uploaded_cvs/*
+APIs/UserAPI/profile_pictures/*
+APIs/UserAPI/temp_files/*
+APIs/UserAPI/temp_registrations/*
+
+# Mantener las carpetas pero vacías
+!APIs/UserAPI/uploaded_cvs/.gitkeep
+!APIs/UserAPI/profile_pictures/.gitkeep
+!APIs/UserAPI/temp_files/.gitkeep
+!APIs/UserAPI/temp_registrations/.gitkeep
+
+# Logs y PIDs
+*.log
+*.pid
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
