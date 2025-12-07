@@ -97,7 +97,9 @@
           name="password"
           [(ngModel)]="commonData.password"
           required
-          minlength="6" />
+          minlength="6"
+          maxlength="50"
+          autocomplete="new-password" />
         <p class="error" *ngIf="commonData.password && commonData.password.length < 6">
           La contraseña debe tener al menos 6 caracteres.
         </p>
