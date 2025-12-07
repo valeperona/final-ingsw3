@@ -43,7 +43,10 @@ async def startup_event():
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],  # Puerto típico de Angular dev server
+    allow_origins=[
+        "http://localhost:4200",  # Desarrollo local
+        "https://frontend-737714447258.us-central1.run.app"  # Producción
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
