@@ -26,7 +26,6 @@ tf-frontend/dist/
 tf-frontend/.angular/
 tf-frontend/npm-debug.log*
 tf-frontend/yarn-error.log*
-tf-frontend/package-lock.json
 
 # User uploaded files (no commitear archivos de usuarios)
 APIs/UserAPI/uploaded_cvs/*
