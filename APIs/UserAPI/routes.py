@@ -41,9 +41,13 @@ async def register_candidato(
 ):
     """Registra candidato directamente - sin CV ni verificación de email"""
     try:
+        # Truncar contraseña a 72 bytes ANTES de procesarla (límite de bcrypt)
+        password_bytes = password.encode('utf-8')[:72]
+        password_truncated = password_bytes.decode('utf-8', errors='ignore')
+
         candidato_create = CandidatoCreate(
             email=email,
-            password=password,
+            password=password_truncated,
             nombre=nombre,
             apellido=apellido,
             genero=genero,
@@ -78,9 +82,13 @@ async def register_empresa(
 ):
     """Registra empresa directamente - sin verificación de email"""
     try:
+        # Truncar contraseña a 72 bytes ANTES de procesarla (límite de bcrypt)
+        password_bytes = password.encode('utf-8')[:72]
+        password_truncated = password_bytes.decode('utf-8', errors='ignore')
+
         empresa_create = EmpresaCreate(
             email=email,
-            password=password,
+            password=password_truncated,
             nombre=nombre,
             descripcion=descripcion
         )
