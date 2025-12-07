@@ -40,19 +40,31 @@ async def register_candidato(
     db: Session = Depends(get_db)
 ):
     """Registra candidato directamente - sin CV ni verificación de email"""
-    candidato_create = CandidatoCreate(
-        email=email,
-        password=password,
-        nombre=nombre,
-        apellido=apellido,
-        genero=genero,
-        fecha_nacimiento=fecha_nacimiento
-    )
+    try:
+        candidato_create = CandidatoCreate(
+            email=email,
+            password=password,
+            nombre=nombre,
+            apellido=apellido,
+            genero=genero,
+            fecha_nacimiento=fecha_nacimiento
+        )
 
-    user_service = UserService(db)
-    # Crear candidato directamente sin verificación
-    user = user_service.create_candidato_simple(candidato_create, profile_picture)
-    return user
+        user_service = UserService(db)
+        # Crear candidato directamente sin verificación
+        user = user_service.create_candidato_simple(candidato_create, profile_picture)
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ ERROR en register_candidato: {str(e)}")
+        print(f"❌ Tipo de error: {type(e).__name__}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al registrar candidato: {str(e)}"
+        )
 
 # ⭐ ENDPOINT SIMPLIFICADO - Registro directo de empresas (sin verificación)
 @router.post("/register-empresa", response_model=UserResponse)
@@ -65,17 +77,29 @@ async def register_empresa(
     db: Session = Depends(get_db)
 ):
     """Registra empresa directamente - sin verificación de email"""
-    empresa_create = EmpresaCreate(
-        email=email,
-        password=password,
-        nombre=nombre,
-        descripcion=descripcion
-    )
+    try:
+        empresa_create = EmpresaCreate(
+            email=email,
+            password=password,
+            nombre=nombre,
+            descripcion=descripcion
+        )
 
-    user_service = UserService(db)
-    # Crear empresa directamente sin verificación
-    user = user_service.create_empresa_simple(empresa_create, profile_picture)
-    return user
+        user_service = UserService(db)
+        # Crear empresa directamente sin verificación
+        user = user_service.create_empresa_simple(empresa_create, profile_picture)
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ ERROR en register_empresa: {str(e)}")
+        print(f"❌ Tipo de error: {type(e).__name__}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al registrar empresa: {str(e)}"
+        )
 
 # ⭐ ENDPOINT UNIFICADO - Completar cualquier tipo de registro (DEPRECATED - ya no se usa)
 @router.post("/complete-registration", response_model=UserResponse)
