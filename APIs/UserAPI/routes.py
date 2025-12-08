@@ -1,15 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Header, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Header
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import timedelta, date
+from datetime import date
 import os
-import httpx
 
 from database import get_db
-from schemas import UserResponse, CandidatoCreate, EmpresaCreate, UserUpdate, Token, UserLogin, CompanyVerification
+from schemas import UserResponse, CandidatoCreate, EmpresaCreate, UserUpdate, Token, UserLogin
 from services import UserService
-from auth import create_access_token, get_current_user, get_current_user_optional, ACCESS_TOKEN_EXPIRE_MINUTES
+from auth import create_access_token, get_current_user
 from models import User, GenderEnum, UserRoleEnum, CompanyRecruiter
 
 router = APIRouter()
@@ -25,7 +24,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "UserAPI",
-        "version": "1.0.0"
+        "version": "2.0.0"
     }
 
 def verify_internal_api_key(x_internal_api_key: Optional[str] = Header(None)):
@@ -37,7 +36,10 @@ def verify_internal_api_key(x_internal_api_key: Optional[str] = Header(None)):
         )
     return True
 
-# ⭐ ENDPOINT SIMPLIFICADO - Registro directo de candidatos (sin CV ni verificación)
+# =====================================================
+# REGISTRO Y LOGIN
+# =====================================================
+
 @router.post("/register-candidato", response_model=UserResponse)
 async def register_candidato(
     email: str = Form(...),
@@ -49,9 +51,8 @@ async def register_candidato(
     profile_picture: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    """Registra candidato directamente - sin CV ni verificación de email"""
+    """Registra candidato directamente sin verificación de email"""
     try:
-        # Truncar contraseña a 72 bytes ANTES de procesarla (límite de bcrypt)
         password_bytes = password.encode('utf-8')[:72]
         password_truncated = password_bytes.decode('utf-8', errors='ignore')
 
@@ -65,22 +66,16 @@ async def register_candidato(
         )
 
         user_service = UserService(db)
-        # Crear candidato directamente sin verificación
         user = user_service.create_candidato_simple(candidato_create, profile_picture)
         return user
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ ERROR en register_candidato: {str(e)}")
-        print(f"❌ Tipo de error: {type(e).__name__}")
-        import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al registrar candidato: {str(e)}"
         )
 
-# ⭐ ENDPOINT SIMPLIFICADO - Registro directo de empresas (sin verificación)
 @router.post("/register-empresa", response_model=UserResponse)
 async def register_empresa(
     email: str = Form(...),
@@ -90,9 +85,8 @@ async def register_empresa(
     profile_picture: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    """Registra empresa directamente - sin verificación de email"""
+    """Registra empresa directamente sin verificación de email"""
     try:
-        # Truncar contraseña a 72 bytes ANTES de procesarla (límite de bcrypt)
         password_bytes = password.encode('utf-8')[:72]
         password_truncated = password_bytes.decode('utf-8', errors='ignore')
 
@@ -104,140 +98,239 @@ async def register_empresa(
         )
 
         user_service = UserService(db)
-        # Crear empresa directamente sin verificación
         user = user_service.create_empresa_simple(empresa_create, profile_picture)
         return user
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ ERROR en register_empresa: {str(e)}")
-        print(f"❌ Tipo de error: {type(e).__name__}")
-        import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al registrar empresa: {str(e)}"
         )
 
-
-# ⭐ ENDPOINT ACTUALIZADO - Login con validación de email verificado
 @router.post("/login", response_model=Token)
-async def login_user(user_login: UserLogin, db: Session = Depends(get_db)):
+async def login(user_login: UserLogin, db: Session = Depends(get_db)):
+    """Autentica usuario y retorna JWT token"""
     user_service = UserService(db)
     user = user_service.authenticate_user(user_login.email, user_login.password)
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o contraseña incorrectos",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Credenciales incorrectas",
+            headers={"WWW-Authenticate": "Bearer"}
         )
-    
-    # ⭐ NUEVO: Verificar que el email esté verificado
-    if not user.email_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Debes verificar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.",
-        )
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
 
-# Endpoint para obtener el usuario actual
+    access_token = create_access_token(data={"sub": user.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user
+    }
+
+# =====================================================
+# PERFIL DE USUARIO
+# =====================================================
+
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: User = Depends(get_current_user)):
+async def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    """Obtiene el perfil del usuario autenticado"""
     return current_user
 
-# Endpoint para obtener todos los usuarios
-@router.get("/users", response_model=List[UserResponse])
+@router.put("/me/candidato", response_model=UserResponse)
+async def update_candidato_profile(
+    nombre: Optional[str] = Form(None),
+    apellido: Optional[str] = Form(None),
+    genero: Optional[GenderEnum] = Form(None),
+    fecha_nacimiento: Optional[date] = Form(None),
+    profile_picture: Optional[UploadFile] = File(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Actualiza perfil de candidato"""
+    if current_user.role != UserRoleEnum.candidato:
+        raise HTTPException(status_code=403, detail="Solo candidatos pueden usar este endpoint")
+
+    user_service = UserService(db)
+    user_update = UserUpdate(
+        nombre=nombre,
+        apellido=apellido,
+        genero=genero,
+        fecha_nacimiento=fecha_nacimiento
+    )
+
+    return user_service.update_user(current_user.id, user_update, profile_picture=profile_picture)
+
+@router.put("/me/empresa", response_model=UserResponse)
+async def update_empresa_profile(
+    nombre: Optional[str] = Form(None),
+    descripcion: Optional[str] = Form(None),
+    profile_picture: Optional[UploadFile] = File(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Actualiza perfil de empresa"""
+    if current_user.role != UserRoleEnum.empresa:
+        raise HTTPException(status_code=403, detail="Solo empresas pueden usar este endpoint")
+
+    user_service = UserService(db)
+    user_update = UserUpdate(nombre=nombre, descripcion=descripcion)
+
+    return user_service.update_user(current_user.id, user_update, profile_picture=profile_picture)
+
+# =====================================================
+# ENDPOINTS ADMIN
+# =====================================================
+
+@router.get("/admin/users", response_model=List[UserResponse])
 async def get_all_users(
-    skip: int = 0, 
-    limit: int = 100, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    user_service = UserService(db)
-    return user_service.get_all_users(skip=skip, limit=limit)
+    """Obtiene todos los usuarios (solo admin)"""
+    if current_user.role != UserRoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Solo administradores")
 
-# ⭐ ENDPOINT CORREGIDO - Datos básicos públicos, datos completos solo con autenticación
-@router.get("/users/{user_id}", response_model=UserResponse)
-async def get_user_by_id(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    user_service = UserService(db)
+    return user_service.get_all_users(skip, limit)
+
+@router.get("/admin/candidates", response_model=List[UserResponse])
+async def get_all_candidates(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    """
-    Obtener información de usuario.
-    - Público: solo nombre, id, rol
-    - Autenticado: datos completos si es el dueño o admin
-    """
+    """Obtiene todos los candidatos (solo admin)"""
+    if current_user.role != UserRoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Solo administradores")
+
     user_service = UserService(db)
-    user = user_service.get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado"
-        )
+    return user_service.get_all_candidates(skip, limit)
 
-    # 🔒 SEGURIDAD: Si no está autenticado, devolver solo datos públicos mínimos
-    if current_user is None:
-        return UserResponse(
-            id=user.id,
-            nombre=user.nombre,
-            apellido=user.apellido if user.role == UserRoleEnum.candidato else None,
-            role=user.role,
-            # Resto de campos en None por seguridad
-            email=None,
-            fecha_nacimiento=None,
-            verified=None,
-            profile_picture=user.profile_picture,  # Foto pública
-            cv_filename=None,  # NO exponer filename
-            cv_analizado=None,  # NO exponer datos del CV
-            descripcion=user.descripcion if user.role == UserRoleEnum.empresa else None,
-            created_at=None
-        )
+# =====================================================
+# GESTIÓN DE RECRUITERS
+# =====================================================
 
-    # 🔒 SEGURIDAD: Si está autenticado, verificar permisos
-    is_owner = current_user.id == user_id
-    is_admin = current_user.role == UserRoleEnum.admin
+@router.post("/companies/add-recruiter")
+async def add_recruiter_to_company(
+    recruiter_email: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Asigna un recruiter a una empresa (solo empresas)"""
+    if current_user.role != UserRoleEnum.empresa:
+        raise HTTPException(status_code=403, detail="Solo empresas pueden asignar recruiters")
 
-    # Datos completos solo para el dueño o admin
-    if is_owner or is_admin:
-        return UserResponse(
-            id=user.id,
-            email=user.email,
-            nombre=user.nombre,
-            apellido=user.apellido,
-            fecha_nacimiento=user.fecha_nacimiento,
-            role=user.role,
-            verified=user.verified,
-            profile_picture=user.profile_picture,
-            cv_filename=user.cv_filename,
-            cv_analizado=user.cv_analizado,
-            descripcion=user.descripcion,
-            created_at=user.created_at
-        )
-    else:
-        # Usuario autenticado pero no es el dueño: datos públicos limitados
-        return UserResponse(
-            id=user.id,
-            nombre=user.nombre,
-            apellido=user.apellido if user.role == UserRoleEnum.candidato else None,
-            role=user.role,
-            email=None,
-            fecha_nacimiento=None,
-            verified=user.verified if user.role == UserRoleEnum.empresa else None,
-            profile_picture=user.profile_picture,
-            cv_filename=None,
-            cv_analizado=None,
-            descripcion=user.descripcion if user.role == UserRoleEnum.empresa else None,
-            created_at=None
-        )
+    # Buscar al recruiter por email
+    recruiter = db.query(User).filter(User.email == recruiter_email).first()
+    if not recruiter:
+        raise HTTPException(status_code=404, detail="Recruiter no encontrado")
 
-# 🔒 ENDPOINT INTERNO - Para comunicación entre servicios (JobsAPI, MatcheoAPI, etc.)
+    if recruiter.role != UserRoleEnum.candidato:
+        raise HTTPException(status_code=400, detail="Solo candidatos pueden ser recruiters")
+
+    # Verificar si ya existe la relación
+    existing = db.query(CompanyRecruiter).filter(
+        CompanyRecruiter.company_id == current_user.id,
+        CompanyRecruiter.recruiter_id == recruiter.id
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Este recruiter ya está asignado a tu empresa")
+
+    # Crear relación
+    new_relation = CompanyRecruiter(
+        company_id=current_user.id,
+        recruiter_id=recruiter.id
+    )
+    db.add(new_relation)
+    db.commit()
+
+    return {"message": f"Recruiter {recruiter_email} asignado exitosamente"}
+
+@router.get("/companies/my-recruiters")
+async def get_my_recruiters(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Obtiene todos los recruiters de una empresa"""
+    if current_user.role != UserRoleEnum.empresa:
+        raise HTTPException(status_code=403, detail="Solo empresas")
+
+    relations = db.query(CompanyRecruiter).filter(
+        CompanyRecruiter.company_id == current_user.id,
+        CompanyRecruiter.is_active == True
+    ).all()
+
+    recruiters = []
+    for rel in relations:
+        recruiter = db.query(User).filter(User.id == rel.recruiter_id).first()
+        if recruiter:
+            recruiters.append({
+                "id": recruiter.id,
+                "email": recruiter.email,
+                "nombre": recruiter.nombre,
+                "apellido": recruiter.apellido,
+                "assigned_at": rel.assigned_at
+            })
+
+    return recruiters
+
+@router.delete("/companies/remove-recruiter")
+async def remove_recruiter_from_company(
+    recruiter_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Elimina un recruiter de una empresa"""
+    if current_user.role != UserRoleEnum.empresa:
+        raise HTTPException(status_code=403, detail="Solo empresas")
+
+    relation = db.query(CompanyRecruiter).filter(
+        CompanyRecruiter.company_id == current_user.id,
+        CompanyRecruiter.recruiter_id == recruiter_id
+    ).first()
+
+    if not relation:
+        raise HTTPException(status_code=404, detail="Relación no encontrada")
+
+    db.delete(relation)
+    db.commit()
+
+    return {"message": "Recruiter eliminado exitosamente"}
+
+@router.get("/me/recruiting-for")
+async def get_recruiting_for(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Obtiene las empresas para las que el usuario es recruiter"""
+    relations = db.query(CompanyRecruiter).filter(
+        CompanyRecruiter.recruiter_id == current_user.id,
+        CompanyRecruiter.is_active == True
+    ).all()
+
+    companies = []
+    for rel in relations:
+        company = db.query(User).filter(User.id == rel.company_id).first()
+        if company:
+            companies.append({
+                "id": company.id,
+                "email": company.email,
+                "nombre": company.nombre,
+                "descripcion": company.descripcion,
+                "assigned_at": rel.assigned_at
+            })
+
+    return companies
+
+# =====================================================
+# ENDPOINT INTERNO (Para JobsAPI y otros servicios)
+# =====================================================
+
 @router.get("/internal/users/{user_id}", response_model=UserResponse)
 async def get_user_internal(
     user_id: int,
@@ -245,547 +338,16 @@ async def get_user_internal(
     _: bool = Depends(verify_internal_api_key)
 ):
     """
-    Endpoint interno para que otros servicios obtengan datos completos de usuarios.
-    Requiere API key interna en header X-Internal-API-Key.
-    Solo para uso de JobsAPI, MatcheoAPI, etc.
+    Endpoint interno para que otros servicios obtengan datos de usuario
+    Requiere API key interna en header X-Internal-Api-Key
     """
     user_service = UserService(db)
     user = user_service.get_user_by_id(user_id)
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado"
         )
 
-    # Devolver datos completos para servicios internos
-    return UserResponse(
-        id=user.id,
-        email=user.email,
-        nombre=user.nombre,
-        apellido=user.apellido,
-        fecha_nacimiento=user.fecha_nacimiento,
-        role=user.role,
-        verified=user.verified,
-        profile_picture=user.profile_picture,
-        cv_filename=user.cv_filename,
-        cv_analizado=user.cv_analizado,
-        descripcion=user.descripcion,
-        created_at=user.created_at
-    )
-
-# Endpoint para actualizar usuario
-@router.put("/users/{user_id}", response_model=UserResponse)
-async def update_user(
-    user_id: int,
-    email: str = Form(None),
-    password: str = Form(None),
-    nombre: str = Form(None),
-    apellido: str = Form(None),
-    genero: GenderEnum = Form(None),
-    fecha_nacimiento: date = Form(None),
-    cv_file: UploadFile = File(None),
-    profile_picture: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # 🔒 SEGURIDAD: Verificar que el usuario solo pueda actualizar su propia cuenta (o sea admin)
-    if current_user.id != user_id and current_user.role != UserRoleEnum.admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos para actualizar esta cuenta"
-        )
-
-    user_update = UserUpdate(
-        email=email,
-        password=password,
-        nombre=nombre,
-        apellido=apellido,
-        genero=genero,
-        fecha_nacimiento=fecha_nacimiento
-    )
-
-    user_service = UserService(db)
-    return user_service.update_user(user_id, user_update, cv_file, profile_picture)
-
-# Endpoint para eliminar usuario
-@router.delete("/users/{user_id}")
-async def delete_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # 🔒 SEGURIDAD: Verificar que el usuario solo pueda eliminar su propia cuenta (o sea admin)
-    if current_user.id != user_id and current_user.role != UserRoleEnum.admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos para eliminar esta cuenta"
-        )
-
-    user_service = UserService(db)
-    user_service.delete_user(user_id)
-    return {"message": "Usuario eliminado exitosamente"}
-
-# Endpoint para actualizar candidato actual
-@router.put("/me/candidato", response_model=UserResponse)
-async def update_current_candidato(
-    nombre: str = Form(None),
-    apellido: str = Form(None),
-    genero: GenderEnum = Form(None),
-    fecha_nacimiento: date = Form(None),
-    cv_file: UploadFile = File(None),
-    profile_picture: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Verificar que sea un candidato
-    if current_user.role != UserRoleEnum.candidato:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo candidatos pueden usar este endpoint"
-        )
-    
-    user_update = UserUpdate()
-    if nombre is not None:
-        user_update.nombre = nombre
-    if apellido is not None:
-        user_update.apellido = apellido
-    if genero is not None:
-        user_update.genero = genero
-    if fecha_nacimiento is not None:
-        user_update.fecha_nacimiento = fecha_nacimiento
-    
-    user_service = UserService(db)
-    return user_service.update_user(current_user.id, user_update, cv_file, profile_picture)
-
-# Endpoint para actualizar empresa actual
-@router.put("/me/empresa", response_model=UserResponse)
-async def update_current_empresa(
-    nombre: str = Form(None),
-    descripcion: str = Form(None),
-    profile_picture: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        # Verificar que sea una empresa
-        if current_user.role != UserRoleEnum.empresa:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo empresas pueden usar este endpoint"
-            )
-
-        user_update = UserUpdate()
-        if nombre is not None:
-            user_update.nombre = nombre
-        if descripcion is not None:
-            user_update.descripcion = descripcion
-
-        user_service = UserService(db)
-        return user_service.update_user(current_user.id, user_update, None, profile_picture)
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"❌ ERROR en update_current_empresa: {str(e)}")
-        print(f"❌ Tipo de error: {type(e).__name__}")
-        import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al actualizar empresa: {str(e)}"
-        )
-
-# Endpoint genérico (mantener para compatibilidad - decide automáticamente)
-@router.put("/me", response_model=UserResponse)
-async def update_current_user(
-    # Campos comunes
-    nombre: str = Form(None),
-    
-    # Campos específicos de candidatos
-    apellido: str = Form(None),
-    genero: GenderEnum = Form(None),
-    fecha_nacimiento: date = Form(None),
-    cv_file: UploadFile = File(None),
-    
-    # Campos específicos de empresas
-    descripcion: str = Form(None),
-    
-    # Campo común para todos
-    profile_picture: Optional[UploadFile] = File(None),
-    
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Crear user_update dinámicamente según el rol del usuario
-    user_update = UserUpdate()
-    
-    # Campo común para todos los roles
-    if nombre is not None:
-        user_update.nombre = nombre
-    
-    # Solo procesar campos específicos según el rol del usuario actual
-    if current_user.role == UserRoleEnum.candidato:
-        # Solo candidatos pueden actualizar estos campos
-        if apellido is not None:
-            user_update.apellido = apellido
-        if genero is not None:
-            user_update.genero = genero
-        if fecha_nacimiento is not None:
-            user_update.fecha_nacimiento = fecha_nacimiento
-    
-    elif current_user.role == UserRoleEnum.empresa:
-        # Solo empresas pueden actualizar descripción
-        if descripcion is not None:
-            user_update.descripcion = descripcion
-    
-    user_service = UserService(db)
-    return user_service.update_user(current_user.id, user_update, cv_file, profile_picture)
-
-# Función para verificar si es admin
-def require_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != UserRoleEnum.admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado: Se requieren permisos de administrador"
-        )
-    return current_user
-
-# Endpoints para administradores
-@router.get("/admin/companies/pending", response_model=List[UserResponse])
-async def get_pending_companies(
-    db: Session = Depends(get_db),
-    admin_user: User = Depends(require_admin)
-):
-    """Ver empresas pendientes de verificación"""
-    user_service = UserService(db)
-    return user_service.get_unverified_companies()
-
-# Endpoint simple para verificar empresa (solo email)
-@router.post("/admin/companies/verify")
-async def verify_company_simple(
-    company_email: str,
-    db: Session = Depends(get_db),
-    admin_user: User = Depends(require_admin)
-):
-    """Verificar empresa por email (endpoint simple)"""
-    user_service = UserService(db)
-    
-    # Buscar empresa por email
-    company = user_service.get_user_by_email(company_email)
-    
-    if not company:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No se encontró empresa con email: {company_email}"
-        )
-    
-    if company.role != UserRoleEnum.empresa:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"El usuario {company_email} no es una empresa"
-        )
-    
-    if company.verified:
-        return {"message": f"La empresa {company_email} ya está verificada"}
-
-    # Verificar empresa
-    verified_company = user_service.verify_company(company.id)
-    
-    return {
-        "message": f"Empresa {company_email} verificada exitosamente",
-        "company": {
-            "id": verified_company.id,
-            "nombre": verified_company.nombre,
-            "email": verified_company.email,
-            "verified": verified_company.verified
-        }
-    }
-
-@router.put("/admin/companies/verify-by-email", response_model=UserResponse)
-async def verify_company_by_email(
-    company_email: str,
-    verification: CompanyVerification,
-    db: Session = Depends(get_db),
-    admin_user: User = Depends(require_admin)
-):
-    """Verificar empresa por email"""
-    user_service = UserService(db)
-    
-    # Buscar empresa por email
-    company = user_service.get_user_by_email(company_email)
-    
-    if not company:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No se encontró empresa con email: {company_email}"
-        )
-    
-    if company.role != UserRoleEnum.empresa:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"El usuario {company_email} no es una empresa"
-        )
-
-    return user_service.verify_company(company.id)
-
-@router.get("/admin/users", response_model=List[UserResponse])
-async def get_all_users_admin(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    admin_user: User = Depends(require_admin)
-):
-    """Ver todos los usuarios (solo admins)"""
-    user_service = UserService(db)
-    return user_service.get_all_users(skip=skip, limit=limit)
-
-# Función para verificar si es empresa verificada
-def require_verified_company(current_user: User = Depends(get_current_user)):
-    if current_user.role != UserRoleEnum.empresa:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo empresas pueden realizar esta acción"
-        )
-    if not current_user.verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo empresas verificadas pueden agregar recruiters"
-        )
-    return current_user
-
-# Endpoints para gestión de recruiters
-@router.post("/companies/add-recruiter")
-async def add_recruiter_to_company(
-    recruiter_email: str,
-    db: Session = Depends(get_db),
-    company: User = Depends(require_verified_company)
-):
-    """Agregar recruiter a mi empresa"""
-    user_service = UserService(db)
-    
-    try:
-        company_recruiter = user_service.add_recruiter_to_company(
-            company.id, 
-            recruiter_email
-        )
-        
-        return {
-            "message": f"Recruiter {recruiter_email} agregado exitosamente",
-            "recruiter_id": company_recruiter.recruiter_id,
-            "assigned_at": company_recruiter.assigned_at
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al agregar recruiter: {str(e)}"
-        )
-
-@router.get("/companies/my-recruiters")
-async def get_my_recruiters(
-    db: Session = Depends(get_db),
-    company: User = Depends(require_verified_company)
-):
-    """Ver todos mis recruiters"""
-    user_service = UserService(db)
-    recruiters = user_service.get_company_recruiters(company.id)
-    
-    recruiter_list = []
-    for rel in recruiters:
-        recruiter_user = user_service.get_user_by_id(rel.recruiter_id)
-        if recruiter_user:
-            recruiter_list.append({
-                "id": recruiter_user.id,
-                "email": recruiter_user.email,
-                "nombre": recruiter_user.nombre,
-                "apellido": recruiter_user.apellido,
-                "assigned_at": rel.assigned_at,
-                "is_active": rel.is_active
-            })
-    
-    return {
-        "company": company.nombre,
-        "recruiters": recruiter_list,
-        "total": len(recruiter_list)
-    }
-
-@router.delete("/companies/remove-recruiter")
-async def remove_recruiter_from_company(
-    recruiter_email: str,
-    db: Session = Depends(get_db),
-    company: User = Depends(require_verified_company)
-):
-    """Remover recruiter de mi empresa"""
-    user_service = UserService(db)
-    
-    success = user_service.remove_recruiter_from_company(
-        company.id, 
-        recruiter_email
-    )
-    
-    if success:
-        return {
-            "message": f"Recruiter {recruiter_email} removido exitosamente"
-        }
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo remover el recruiter"
-        )
-
-@router.get("/me/recruiting-for")
-async def get_recruiting_companies(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Ver para qué empresas soy recruiter"""
-    if current_user.role != UserRoleEnum.candidato:
-        return {
-            "message": "Solo candidatos pueden ser recruiters",
-            "companies": []
-        }
-    
-    user_service = UserService(db)
-    companies = user_service.get_recruiter_companies(current_user.id)
-    
-    company_list = []
-    for rel in companies:
-        company_user = user_service.get_user_by_id(rel.company_id)
-        if company_user:
-            company_list.append({
-                "id": company_user.id,
-                "nombre": company_user.nombre,
-                "email": company_user.email,
-                "descripcion": company_user.descripcion,
-                "assigned_at": rel.assigned_at,
-                "verified": company_user.verified
-            })
-    
-    return {
-        "recruiter": f"{current_user.nombre} {current_user.apellido}",
-        "companies": company_list,
-        "total": len(company_list)
-    }
-
-@router.delete("/me/resign-from-company/{company_id}")
-async def resign_from_company(
-    company_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Renunciar como recruiter de una empresa"""
-    if current_user.role != UserRoleEnum.candidato:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo candidatos pueden renunciar como recruiters"
-        )
-
-    user_service = UserService(db)
-
-    # Verificar que la empresa existe
-    company = user_service.get_user_by_id(company_id)
-    if not company or company.role != UserRoleEnum.empresa:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa no encontrada"
-        )
-
-    # Remover asignaciones de ofertas específicas en JobsAPI
-    JOBS_API_URL = os.getenv("JOBS_API_URL", "http://localhost:8002")
-    import json
-
-    try:
-        async with httpx.AsyncClient() as client:
-            # Llamar al endpoint de JobsAPI para limpiar asignaciones
-            # Usar request() en lugar de delete() porque httpx 0.25.0 no soporta json/content en delete()
-            response = await client.request(
-                method="DELETE",
-                url=f"{JOBS_API_URL}/api/v1/internal/remove-recruiter-assignments",
-                content=json.dumps({
-                    "recruiter_id": current_user.id,
-                    "company_id": company_id
-                }),
-                headers={"Content-Type": "application/json"},
-                timeout=10.0
-            )
-            print(f"JobsAPI cleanup response: {response.status_code} - {response.text}")
-            if response.status_code != 200:
-                print(f"Warning: JobsAPI returned non-200 status: {response.status_code}")
-    except Exception as e:
-        print(f"Warning: Could not cleanup job assignments in JobsAPI: {e}")
-        import traceback
-        print(traceback.format_exc())
-        # No fallar la renuncia si JobsAPI no responde
-
-    # Remover la relación de company_recruiters
-    success = user_service.remove_recruiter_from_company(
-        company_id,
-        current_user.email
-    )
-
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo procesar la renuncia"
-        )
-
-    # Verificar si le quedan empresas
-    remaining_companies = user_service.get_recruiter_companies(current_user.id)
-
-    message = f"Has renunciado como recruiter de {company.nombre}"
-    if not remaining_companies:
-        message += ". Ya no eres recruiter de ninguna empresa"
-
-    return {
-        "message": message,
-        "remaining_companies": len(remaining_companies)
-    }
-
-@router.get("/admin/candidates", response_model=List[UserResponse])
-async def get_all_candidates(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    admin_user: User = Depends(require_admin)
-):
-    """Ver todos los candidatos con sus datos y CV analizados (solo admins)"""
-    user_service = UserService(db)
-    candidates = user_service.get_all_candidates(skip=skip, limit=limit)
-    return candidates
-
-
-@router.get("/companies/{company_id}/recruiters")
-async def get_company_recruiters_public(
-    company_id: int,
-    db: Session = Depends(get_db)
-):
-    """Obtener recruiters activos de una empresa (endpoint público para JobsAPI)"""
-    user_service = UserService(db)
-
-    # Verificar que la empresa existe
-    company = user_service.get_user_by_id(company_id)
-    if not company or company.role != UserRoleEnum.empresa:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa no encontrada"
-        )
-
-    # Obtener recruiters activos
-    recruiters_relations = db.query(CompanyRecruiter).filter(
-        CompanyRecruiter.company_id == company_id,
-        CompanyRecruiter.is_active == True
-    ).all()
-
-    recruiter_list = []
-    for rel in recruiters_relations:
-        recruiter = user_service.get_user_by_id(rel.recruiter_id)
-        if recruiter:
-            recruiter_list.append({
-                "id": recruiter.id,
-                "nombre": recruiter.nombre,
-                "apellido": recruiter.apellido,
-                "email": recruiter.email,
-                "assigned_at": rel.assigned_at
-            })
-
-    return recruiter_list
+    return user

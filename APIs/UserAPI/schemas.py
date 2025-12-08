@@ -1,15 +1,17 @@
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from models import GenderEnum, UserRoleEnum
 
-# Schemas para User Base
+# =====================================================
+# SCHEMAS PARA CREACIÓN DE USUARIOS
+# =====================================================
+
 class UserBase(BaseModel):
     email: str
     nombre: str
     role: UserRoleEnum
 
-# Schemas para Candidatos
 class CandidatoCreate(UserBase):
     password: str
     apellido: str
@@ -17,49 +19,15 @@ class CandidatoCreate(UserBase):
     fecha_nacimiento: date
     role: UserRoleEnum = UserRoleEnum.candidato
 
-class CandidatoResponse(UserBase):
-    id: int
-    apellido: str
-    genero: GenderEnum
-    fecha_nacimiento: date
-    cv_filename: str
-    profile_picture: Optional[str] = None
-    cv_analizado: Optional[Dict[str, Any]] = None  # NUEVO
-    verified: bool
-
-    class Config:
-        from_attributes = True
-
-# Schemas para Empresas
 class EmpresaCreate(UserBase):
     password: str
     descripcion: str
     role: UserRoleEnum = UserRoleEnum.empresa
 
-class EmpresaResponse(UserBase):
-    id: int
-    descripcion: str
-    profile_picture: Optional[str] = None
-    verified: bool
+# =====================================================
+# SCHEMAS PARA RESPUESTAS
+# =====================================================
 
-    class Config:
-        from_attributes = True
-
-# Schemas para Admin
-class AdminCreate(UserBase):
-    password: str
-    role: UserRoleEnum = UserRoleEnum.admin
-
-class AdminResponse(UserBase):
-    id: int
-    verified: bool
-    profile_picture: Optional[str] = None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-# Schema unificado para respuestas
 class UserResponse(BaseModel):
     id: int
     email: str
@@ -71,30 +39,16 @@ class UserResponse(BaseModel):
     apellido: Optional[str] = None
     genero: Optional[GenderEnum] = None
     fecha_nacimiento: Optional[date] = None
-    cv_filename: Optional[str] = None
-    cv_analizado: Optional[Dict[str, Any]] = None  # NUEVO
     descripcion: Optional[str] = None
     created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
-# Schemas para recruiters
-class CompanyRecruiterCreate(BaseModel):
-    recruiter_email: str
+# =====================================================
+# SCHEMAS PARA ACTUALIZACIÓN
+# =====================================================
 
-class CompanyRecruiterResponse(BaseModel):
-    id: int
-    company_id: int
-    recruiter_id: int
-    assigned_at: datetime
-    is_active: bool
-    recruiter: UserResponse
-
-    class Config:
-        from_attributes = True
-
-# Schemas para actualización
 class UserUpdate(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
@@ -102,18 +56,18 @@ class UserUpdate(BaseModel):
     fecha_nacimiento: Optional[date] = None
     descripcion: Optional[str] = None
 
-class CompanyVerification(BaseModel):
-    verified: bool
-    admin_notes: Optional[str] = None
-
-# Schemas para autenticación
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    email: Optional[str] = None
+# =====================================================
+# SCHEMAS PARA AUTENTICACIÓN
+# =====================================================
 
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserResponse
+
+class TokenData(BaseModel):
+    email: Optional[str] = None

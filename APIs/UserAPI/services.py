@@ -1,9 +1,9 @@
 """
-UserService - Versión Simplificada para TP5/TP6
+UserService - Versión Simplificada Final
 
-Solo contiene las funciones esenciales utilizadas:
+Funcionalidades:
 - Autenticación (login)
-- Registro simple (candidatos y empresas)
+- Registro (candidatos y empresas)
 - Consultas de usuarios
 - Actualización de perfil
 - Funciones admin básicas
@@ -14,7 +14,7 @@ from fastapi import HTTPException, status, UploadFile
 from typing import List, Optional, TYPE_CHECKING
 import os
 import uuid
-from datetime import datetime
+import re
 
 if TYPE_CHECKING:
     from models import User
@@ -25,7 +25,7 @@ from auth import get_password_hash, verify_password
 
 
 class UserService:
-    """Servicio para gestión de usuarios (versión simplificada)"""
+    """Servicio para gestión de usuarios"""
 
     def __init__(self, db: Session):
         self.db = db
@@ -54,14 +54,6 @@ class UserService:
         from models import User
         return self.db.query(User).filter(
             User.role == UserRoleEnum.candidato
-        ).offset(skip).limit(limit).all()
-
-    def get_unverified_companies(self, skip: int = 0, limit: int = 100) -> List['User']:
-        """Obtiene empresas no verificadas (endpoint admin)"""
-        from models import User
-        return self.db.query(User).filter(
-            User.role == UserRoleEnum.empresa,
-            User.verified == False
         ).offset(skip).limit(limit).all()
 
     # =====================================================
@@ -93,7 +85,7 @@ class UserService:
         return user
 
     # =====================================================
-    # REGISTRO SIMPLIFICADO (sin CV ni verificación)
+    # REGISTRO
     # =====================================================
 
     def create_candidato_simple(
@@ -102,7 +94,7 @@ class UserService:
         profile_picture: Optional[UploadFile] = None
     ) -> 'User':
         """
-        Crea un candidato directamente sin verificación de email ni CV
+        Crea un candidato directamente sin verificación de email
 
         Args:
             candidato_data: Datos del candidato (CandidatoCreate schema)
@@ -142,10 +134,8 @@ class UserService:
             genero=candidato_data.genero,
             fecha_nacimiento=candidato_data.fecha_nacimiento,
             role=UserRoleEnum.candidato,
-            verified=True,  # Sin verificación de email
-            email_verified=True,
-            profile_picture=profile_pic_filename,
-            cv_filename=None  # Sin CV en versión simplificada
+            verified=True,
+            profile_picture=profile_pic_filename
         )
 
         self.db.add(new_user)
@@ -198,8 +188,7 @@ class UserService:
             nombre=empresa_data.nombre,
             descripcion=empresa_data.descripcion,
             role=UserRoleEnum.empresa,
-            verified=True,  # Sin verificación de email
-            email_verified=True,
+            verified=True,
             profile_picture=profile_pic_filename
         )
 
@@ -217,7 +206,6 @@ class UserService:
         self,
         user_id: int,
         user_update: 'UserUpdate',
-        cv_file: Optional[UploadFile] = None,
         profile_picture: Optional[UploadFile] = None
     ) -> 'User':
         """
@@ -226,7 +214,6 @@ class UserService:
         Args:
             user_id: ID del usuario a actualizar
             user_update: Datos a actualizar (UserUpdate schema)
-            cv_file: Nuevo CV opcional (solo para candidatos)
             profile_picture: Nueva foto de perfil opcional
 
         Returns:
@@ -249,7 +236,7 @@ class UserService:
             if field != "password" and hasattr(user, field) and value is not None:
                 setattr(user, field, value)
 
-        # Actualizar contraseña si se proporciona (solo si el campo existe en el schema)
+        # Actualizar contraseña si se proporciona
         if hasattr(user_update, 'password') and user_update.password:
             password_bytes = user_update.password.encode('utf-8')[:72]
             password_truncated = password_bytes.decode('utf-8', errors='ignore')
@@ -260,47 +247,6 @@ class UserService:
             profile_pic_filename = self._save_profile_picture(profile_picture, user.email)
             user.profile_picture = profile_pic_filename
 
-        # Actualizar CV si se proporciona (solo para candidatos)
-        if cv_file and cv_file.filename and cv_file.size > 0 and user.role == UserRoleEnum.candidato:
-            cv_filename = self._save_cv_file(cv_file, user.email)
-            user.cv_filename = cv_filename
-
-        self.db.commit()
-        self.db.refresh(user)
-
-        return user
-
-    # =====================================================
-    # FUNCIONES ADMIN
-    # =====================================================
-
-    def verify_company(self, company_id: int) -> 'User':
-        """
-        Verifica una empresa (endpoint admin)
-
-        Args:
-            company_id: ID de la empresa a verificar
-
-        Returns:
-            User con verified=True
-
-        Raises:
-            HTTPException: Si la empresa no existe o no es empresa
-        """
-        user = self.get_user_by_id(company_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Empresa no encontrada"
-            )
-
-        if user.role != UserRoleEnum.empresa:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El usuario no es una empresa"
-            )
-
-        user.verified = True
         self.db.commit()
         self.db.refresh(user)
 
@@ -321,8 +267,6 @@ class UserService:
         Returns:
             Nombre del archivo guardado
         """
-        import re
-
         # Crear directorio si no existe
         base_dir = "profile_pictures"
         os.makedirs(base_dir, exist_ok=True)
@@ -359,47 +303,6 @@ class UserService:
         # Guardar archivo
         with open(filepath, "wb") as f:
             content = picture_file.file.read()
-            f.write(content)
-
-        return filename
-
-    def _save_cv_file(self, cv_file: UploadFile, email: str) -> str:
-        """
-        Guarda un CV en el sistema de archivos (seguro contra path injection)
-
-        Args:
-            cv_file: Archivo PDF del CV
-            email: Email del candidato (para nombrar el archivo)
-
-        Returns:
-            Nombre del archivo guardado
-        """
-        import re
-
-        # Crear directorio si no existe
-        base_dir = "uploaded_cvs"
-        os.makedirs(base_dir, exist_ok=True)
-
-        # Sanitizar email: solo alfanuméricos, guiones y underscores
-        safe_email = re.sub(r'[^a-zA-Z0-9_-]', '_', email.split('@')[0])
-
-        # Generar nombre único y seguro (solo PDF permitido)
-        filename = f"{safe_email}_{uuid.uuid4().hex[:8]}.pdf"
-
-        # Construir path y validar que está dentro del directorio base
-        filepath = os.path.join(base_dir, filename)
-        # Resolver path absoluto y verificar que está dentro de base_dir
-        abs_base = os.path.abspath(base_dir)
-        abs_filepath = os.path.abspath(filepath)
-        if not abs_filepath.startswith(abs_base + os.sep):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid file path"
-            )
-
-        # Guardar archivo
-        with open(filepath, "wb") as f:
-            content = cv_file.file.read()
             f.write(content)
 
         return filename
