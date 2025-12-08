@@ -297,23 +297,60 @@ jobs:
             --allow-unauthenticated
 
   # ============================================
-  # FASE 5: Cypress Tests (proximamente)
+  # FASE 5: Cypress Tests
   # ============================================
-  # cypress-tests:
-  #   name: Cypress Integration Tests
-  #   needs: [deploy-qa, deploy-frontend-qa]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Run Cypress tests
-  #       run: echo "Cypress tests - TO DO"
+  cypress-tests:
+    name: Cypress Integration Tests
+    needs: [deploy-qa, deploy-frontend-qa]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tf-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd tf-frontend
+          npm ci
+
+      - name: Run Cypress tests
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: tf-frontend
+          browser: chrome
+          headless: true
+          config: baseUrl=https://frontend-qa-lw3dvwdunq-uc.a.run.app
+        env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+        continue-on-error: false
+
+      - name: Upload Cypress screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: tf-frontend/cypress/screenshots
+          if-no-files-found: ignore
+
+      - name: Upload Cypress videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos
+          path: tf-frontend/cypress/videos
+          if-no-files-found: ignore
 
   # ============================================
   # FASE 6: Deploy Production + Build Frontend Prod en paralelo
   # ============================================
   deploy-production:
     name: Deploy Backend to Production
-    needs: [deploy-qa, deploy-frontend-qa]  # Cambiar a [cypress-tests] cuando esté listo
+    needs: [cypress-tests]
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -347,7 +384,7 @@ jobs:
 
   build-frontend-prod:
     name: Build Frontend Image (Prod)
-    needs: [deploy-qa, deploy-frontend-qa]  # Cambiar a [cypress-tests] cuando esté listo
+    needs: [cypress-tests]
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: final-ingsoft3-2025-480515
