@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Observable } from 'rxjs';
 import { adminGuard } from './admin.guard';
 import { AuthService } from '../services/auth.service';
 import { UserService } from '../services/user.service';
@@ -47,14 +47,15 @@ describe('adminGuard', () => {
       adminGuard({} as any, {} as any)
     );
 
-    if (typeof result === 'boolean') {
-      fail('Expected observable');
-      done();
-    } else {
-      result.subscribe(allowed => {
+    // Check if result is an Observable
+    if (result instanceof Observable) {
+      result.subscribe((allowed: boolean) => {
         expect(allowed).toBe(true);
         done();
       });
+    } else {
+      fail('Expected Observable but got: ' + typeof result);
+      done();
     }
   });
 
@@ -68,15 +69,16 @@ describe('adminGuard', () => {
       adminGuard({} as any, {} as any)
     );
 
-    if (typeof result === 'boolean') {
-      fail('Expected observable');
-      done();
-    } else {
-      result.subscribe(allowed => {
+    // Check if result is an Observable
+    if (result instanceof Observable) {
+      result.subscribe((allowed: boolean) => {
         expect(allowed).toBe(false);
         expect(router.navigate).toHaveBeenCalledWith(['/inicio']);
         done();
       });
+    } else {
+      fail('Expected Observable but got: ' + typeof result);
+      done();
     }
   });
 });
