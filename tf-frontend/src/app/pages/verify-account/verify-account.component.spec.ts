@@ -12,7 +12,7 @@ describe('VerifyAccountComponent', () => {
     await TestBed.configureTestingModule({
       imports: [VerifyAccountComponent, HttpClientTestingModule],
       providers: [
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } }
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParams: { email: 'test@example.com' } } } }
       ]
     })
     .compileComponents();
