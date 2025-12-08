@@ -256,12 +256,12 @@ class UserService:
             user.hashed_password = get_password_hash(password_truncated)
 
         # Actualizar foto de perfil si se proporciona
-        if profile_picture and profile_picture.filename:
+        if profile_picture and profile_picture.filename and profile_picture.size > 0:
             profile_pic_filename = self._save_profile_picture(profile_picture, user.email)
             user.profile_picture = profile_pic_filename
 
         # Actualizar CV si se proporciona (solo para candidatos)
-        if cv_file and cv_file.filename and user.role == UserRoleEnum.candidato:
+        if cv_file and cv_file.filename and cv_file.size > 0 and user.role == UserRoleEnum.candidato:
             cv_filename = self._save_cv_file(cv_file, user.email)
             user.cv_filename = cv_filename
 

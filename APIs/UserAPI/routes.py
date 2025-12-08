@@ -489,21 +489,33 @@ async def update_current_empresa(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Verificar que sea una empresa
-    if current_user.role != UserRoleEnum.empresa:
+    try:
+        # Verificar que sea una empresa
+        if current_user.role != UserRoleEnum.empresa:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo empresas pueden usar este endpoint"
+            )
+
+        user_update = UserUpdate()
+        if nombre is not None:
+            user_update.nombre = nombre
+        if descripcion is not None:
+            user_update.descripcion = descripcion
+
+        user_service = UserService(db)
+        return user_service.update_user(current_user.id, user_update, None, profile_picture)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ ERROR en update_current_empresa: {str(e)}")
+        print(f"❌ Tipo de error: {type(e).__name__}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo empresas pueden usar este endpoint"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al actualizar empresa: {str(e)}"
         )
-    
-    user_update = UserUpdate()
-    if nombre is not None:
-        user_update.nombre = nombre
-    if descripcion is not None:
-        user_update.descripcion = descripcion
-    
-    user_service = UserService(db)
-    return user_service.update_user(current_user.id, user_update, None, profile_picture)
 
 # Endpoint genérico (mantener para compatibilidad - decide automáticamente)
 @router.put("/me", response_model=UserResponse)
