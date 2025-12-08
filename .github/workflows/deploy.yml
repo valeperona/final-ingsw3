@@ -103,8 +103,18 @@ jobs:
       - name: Run backend tests with coverage
         run: |
           cd APIs/UserAPI
-          DATABASE_URL="sqlite:///test.db" python -m pytest tests/test_simplified_api.py tests/test_additional_coverage.py -v --cov=. --cov-report=xml
-        continue-on-error: true
+          DATABASE_URL="sqlite:///test.db" python -m pytest tests/test_simplified_api.py tests/test_additional_coverage.py -v --cov=. --cov-report=xml:coverage.xml --cov-report=term
+
+      - name: Verify backend coverage file
+        run: |
+          echo "Checking for coverage.xml in APIs/UserAPI..."
+          ls -la APIs/UserAPI/coverage.xml || echo "Backend coverage.xml not found!"
+          if [ -f APIs/UserAPI/coverage.xml ]; then
+            echo "Coverage file size:"
+            du -h APIs/UserAPI/coverage.xml
+            echo "First 20 lines of coverage.xml:"
+            head -20 APIs/UserAPI/coverage.xml
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -124,7 +134,17 @@ jobs:
         run: |
           cd tf-frontend
           npm test -- --watch=false --code-coverage --browsers=ChromeHeadlessNoSandbox
-        continue-on-error: true
+
+      - name: Verify frontend coverage file
+        run: |
+          echo "Checking for lcov.info in tf-frontend/coverage..."
+          ls -la tf-frontend/coverage/tf-frontend/lcov.info || echo "Frontend coverage file not found!"
+          if [ -f tf-frontend/coverage/tf-frontend/lcov.info ]; then
+            echo "Coverage file size:"
+            du -h tf-frontend/coverage/tf-frontend/lcov.info
+            echo "First 20 lines of lcov.info:"
+            head -20 tf-frontend/coverage/tf-frontend/lcov.info
+          fi
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
