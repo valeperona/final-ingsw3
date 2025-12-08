@@ -8,6 +8,7 @@ import { TestimonialsComponent } from './components/testimonials/testimonials.co
 import { FooterComponent } from './components/footer/footer.component';
 import { LoginComponent } from './components/login/login.component';
 import { ReactiveFormsModule } from '@angular/forms';
+import { UserConfigComponent } from './pages/user-config/user-config.component';
 import { MyUserComponent } from './pages/my-user/my-user.component';
 
 @Component({
@@ -23,6 +24,7 @@ import { MyUserComponent } from './pages/my-user/my-user.component';
     TestimonialsComponent,
     FooterComponent,
     LoginComponent,
+    UserConfigComponent,
     MyUserComponent,
   ],
   templateUrl: './app.component.html',
