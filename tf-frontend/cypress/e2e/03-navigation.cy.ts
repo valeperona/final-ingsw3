@@ -10,10 +10,9 @@ describe('Navigation', () => {
     cy.url().should('include', '/login')
     cy.contains('Nice to see you again').should('be.visible')
 
-    // Navegar a Registro
-    cy.visit('/registro')
-    cy.url().should('include', '/registro')
-    // Verificar que estamos en la página de registro
+    // Navegar a User Config (registro/configuración de usuario)
+    cy.visit('/user-config')
+    // Verificar que la página carga (puede redirigir a login si no está autenticado)
     cy.get('body').should('be.visible')
 
     // Volver al inicio

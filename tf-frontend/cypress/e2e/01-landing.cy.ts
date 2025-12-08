@@ -28,7 +28,7 @@ describe('Landing Page', () => {
     // Navegar a login primero
     cy.visit('/login')
     cy.url().should('include', '/login')
-    // Verificar que existe link o botón de registro
-    cy.get('body').should('contain.text', 'registr')
+    // Verificar que existe link o botón de registro (en inglés)
+    cy.get('body').should('contain.text', 'Sign up')
   })
 })

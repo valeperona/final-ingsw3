@@ -41,7 +41,7 @@ describe('Login Flow', () => {
   })
 
   it('debería mostrar link o botón para registro', () => {
-    // Verificar que existe opción para ir a registro
-    cy.get('body').should('contain.text', 'registr')
+    // Verificar que existe opción para ir a registro (en inglés)
+    cy.get('body').should('contain.text', 'Sign up')
   })
 })
