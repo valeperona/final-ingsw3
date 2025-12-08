@@ -14,34 +14,27 @@
 
   <!-- Navegación de tabs -->
   <div class="tabs-navigation">
-    <button 
-      class="tab-btn" 
+    <button
+      class="tab-btn"
       [class.active]="activeView === 'dashboard'"
       (click)="setActiveView('dashboard')">
       <i class="bi bi-grid-fill"></i>
       Dashboard
     </button>
-    <button 
-      class="tab-btn" 
+    <button
+      class="tab-btn"
       [class.active]="activeView === 'companies'"
       (click)="setActiveView('companies')">
       <i class="bi bi-building"></i>
       Empresas
       <span class="badge" *ngIf="stats.pendingCompanies > 0">{{ stats.pendingCompanies }}</span>
     </button>
-    <button 
-      class="tab-btn" 
+    <button
+      class="tab-btn"
       [class.active]="activeView === 'candidates'"
       (click)="setActiveView('candidates')">
       <i class="bi bi-people-fill"></i>
       Candidatos
-    </button>
-    <button 
-      class="tab-btn" 
-      [class.active]="activeView === 'jobs'"
-      (click)="setActiveView('jobs')">
-      <i class="bi bi-briefcase-fill"></i>
-      Ofertas
     </button>
   </div>
 
@@ -79,26 +72,6 @@
         </div>
       </div>
 
-      <div class="stat-card warning">
-        <div class="stat-icon">
-          <i class="bi bi-briefcase-fill"></i>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Ofertas Activas</span>
-          <span class="stat-value">{{ stats.activeJobs }}</span>
-        </div>
-      </div>
-
-      <div class="stat-card secondary">
-        <div class="stat-icon">
-          <i class="bi bi-file-earmark-text"></i>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Total Ofertas</span>
-          <span class="stat-value">{{ stats.totalJobs }}</span>
-        </div>
-      </div>
-
       <div class="stat-card danger">
         <div class="stat-icon">
           <i class="bi bi-clock-history"></i>
@@ -132,7 +105,7 @@
             <tr *ngFor="let company of pendingCompanies">
               <td><strong>{{ company.nombre }}</strong></td>
               <td>{{ company.email }}</td>
-              <td>{{ formatDate(company.created_at) }}</td>
+              <td>{{ company.created_at | date:'dd/MM/yyyy' }}</td>
               <td>
                 <button class="btn btn-success btn-sm" (click)="verifyCompany(company.email)">
                   <i class="bi bi-check-circle"></i>
@@ -163,20 +136,20 @@
           Gestión de Empresas
         </h2>
         <div class="filters">
-          <button 
-            class="filter-btn" 
+          <button
+            class="filter-btn"
             [class.active]="companyFilter === 'all'"
             (click)="companyFilter = 'all'">
             Todas ({{ allCompanies.length }})
           </button>
-          <button 
-            class="filter-btn" 
+          <button
+            class="filter-btn"
             [class.active]="companyFilter === 'verified'"
             (click)="companyFilter = 'verified'">
             Verificadas
           </button>
-          <button 
-            class="filter-btn" 
+          <button
+            class="filter-btn"
             [class.active]="companyFilter === 'pending'"
             (click)="companyFilter = 'pending'">
             Pendientes ({{ pendingCompanies.length }})
@@ -206,10 +179,10 @@
                   {{ company.verified ? 'Verificada' : 'Pendiente' }}
                 </span>
               </td>
-              <td>{{ formatDate(company.created_at) }}</td>
+              <td>{{ company.created_at | date:'dd/MM/yyyy' }}</td>
               <td>
-                <button 
-                  *ngIf="!company.verified" 
+                <button
+                  *ngIf="!company.verified"
                   class="btn btn-success btn-sm"
                   (click)="verifyCompany(company.email)">
                   <i class="bi bi-check-circle"></i>
@@ -264,7 +237,7 @@
                   Sin CV
                 </span>
               </td>
-              <td>{{ formatDate(candidate.created_at) }}</td>
+              <td>{{ candidate.created_at | date:'dd/MM/yyyy' }}</td>
             </tr>
           </tbody>
         </table>
@@ -273,77 +246,6 @@
       <div class="loading-container" *ngIf="loadingCandidates">
         <div class="spinner"></div>
         <p>Cargando candidatos...</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Vista: Ofertas -->
-  <div *ngIf="activeView === 'jobs'" class="jobs-view">
-    <div class="section-card">
-      <div class="section-header">
-        <h2>
-          <i class="bi bi-briefcase-fill"></i>
-          Gestión de Ofertas de Trabajo
-        </h2>
-        <div class="filters">
-          <button 
-            class="filter-btn" 
-            [class.active]="jobFilter === 'all'"
-            (click)="jobFilter = 'all'">
-            Todas ({{ recentJobs.length }})
-          </button>
-          <button 
-            class="filter-btn" 
-            [class.active]="jobFilter === 'active'"
-            (click)="jobFilter = 'active'">
-            Activas
-          </button>
-          <button 
-            class="filter-btn" 
-            [class.active]="jobFilter === 'closed'"
-            (click)="jobFilter = 'closed'">
-            Cerradas
-          </button>
-        </div>
-      </div>
-
-      <div class="table-container" *ngIf="!loadingJobs">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Título</th>
-              <th>Empresa</th>
-              <th>Estado</th>
-              <th>Fecha de Publicación</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let job of filteredJobs">
-              <td>#{{ job.id }}</td>
-              <td><strong>{{ job.title }}</strong></td>
-              <td>{{ job.company_name || 'N/A' }}</td>
-              <td>
-                <span class="status-badge" [class.active]="job.status === 'active'" [class.closed]="job.status === 'closed'">
-                  {{ job.status === 'active' ? 'Activa' : 'Cerrada' }}
-                </span>
-              </td>
-              <td>{{ formatDate(job.created_at) }}</td>
-              <td>
-                <button class="btn btn-danger btn-sm" (click)="deleteJob(job.id)">
-                  <i class="bi bi-trash"></i>
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="loading-container" *ngIf="loadingJobs">
-        <div class="spinner"></div>
-        <p>Cargando ofertas...</p>
       </div>
     </div>
   </div>
