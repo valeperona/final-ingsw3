@@ -486,9 +486,9 @@ async def verify_company_simple(
     
     if company.verified:
         return {"message": f"La empresa {company_email} ya está verificada"}
-    
+
     # Verificar empresa
-    verified_company = user_service.verify_company(company.id, True)
+    verified_company = user_service.verify_company(company.id)
     
     return {
         "message": f"Empresa {company_email} verificada exitosamente",
@@ -524,8 +524,8 @@ async def verify_company_by_email(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"El usuario {company_email} no es una empresa"
         )
-    
-    return user_service.verify_company(company.id, verification.verified)
+
+    return user_service.verify_company(company.id)
 
 @router.get("/admin/users", response_model=List[UserResponse])
 async def get_all_users_admin(
