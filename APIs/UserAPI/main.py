@@ -1,9 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import engine, Base
 from routes import router
 import os
+import logging
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Solo crear las tablas si no existen (NO borrar las existentes)
 Base.metadata.create_all(bind=engine)
@@ -27,6 +32,19 @@ async def startup_event():
     """Ejecutar tareas al iniciar la aplicación"""
     print("🚀 Iniciando UserAPI...")
     print("✅ UserAPI iniciada correctamente")
+    print("📋 CORS permitido para:")
+    print("   - http://localhost:4200")
+    print("   - https://frontend-qa-737714447258.us-central1.run.app")
+    print("   - https://frontend-737714447258.us-central1.run.app")
+
+# Middleware para logging de requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    origin = request.headers.get("origin", "No origin header")
+    logger.info(f"Request: {request.method} {request.url.path} | Origin: {origin}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
 
 # Configurar CORS
 app.add_middleware(
