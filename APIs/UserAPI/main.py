@@ -35,10 +35,9 @@ app.add_middleware(
         "http://localhost:4200",  # Desarrollo local
         "https://frontend-qa-737714447258.us-central1.run.app",  # QA
         "https://frontend-737714447258.us-central1.run.app",  # Producción
-        "*"  # Permitir todos los orígenes temporalmente para deployment
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],  # Permitir todos los métodos
     allow_headers=["*"],
 )
 
