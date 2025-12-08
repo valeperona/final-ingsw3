@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 
 import { JobOpeningAdministratorComponent } from './job-opening-administrator.component';
 
@@ -8,7 +9,7 @@ describe('JobOpeningAdministratorComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [JobOpeningAdministratorComponent]
+      imports: [JobOpeningAdministratorComponent, HttpClientTestingModule]
     })
     .compileComponents();
 

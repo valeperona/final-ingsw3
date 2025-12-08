@@ -8,8 +8,7 @@ describe('LoginComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [LoginComponent],
-      imports: [ReactiveFormsModule]
+      imports: [LoginComponent, ReactiveFormsModule]
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginComponent);

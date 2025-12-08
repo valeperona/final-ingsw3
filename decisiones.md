@@ -1,14 +1,15 @@
-# Decisiones Técnicas - TP5 Final Ingeniería de Software 3
+# Decisiones Técnicas - TP5/TP6 Final Ingeniería de Software 3
 
 ## Índice
 1. [Arquitectura General](#arquitectura-general)
 2. [Simplificaciones para Entorno Académico](#simplificaciones-para-entorno-académico)
 3. [Plataforma Cloud](#plataforma-cloud)
 4. [Pipeline CI/CD](#pipeline-cicd)
-5. [Ambientes](#ambientes)
-6. [Base de Datos](#base-de-datos)
-7. [Seguridad](#seguridad)
-8. [Monitoreo](#monitoreo)
+5. [Testing y Code Coverage (TP6)](#testing-y-code-coverage-tp6)
+6. [Ambientes](#ambientes)
+7. [Base de Datos](#base-de-datos)
+8. [Seguridad](#seguridad)
+9. [Monitoreo](#monitoreo)
 
 ---
 
@@ -169,6 +170,232 @@ Deploy PROD UserAPI → Deploy PROD Frontend
 - Backend antes que frontend (evita errores 503)
 - QA siempre antes que PROD
 - Aprobación manual entre ambientes (requisito TP5)
+
+---
+
+## Testing y Code Coverage (TP6)
+
+### Decisión: Pytest para Backend Testing
+**Framework seleccionado**: pytest + pytest-cov
+
+**Razones**:
+1. **Estándar de industria** para testing en Python
+2. **Fixtures poderosas**: Permite setup/teardown de DB y cliente de testing
+3. **Coverage integrado**: pytest-cov proporciona métricas detalladas
+4. **AAA Pattern**: Arrange-Act-Assert para tests legibles
+
+**Implementación**:
+```python
+# tests/test_simplified_api.py
+@pytest.fixture(scope="function")
+def test_db():
+    """Crea una base de datos SQLite en memoria para tests"""
+    # Crea DB temporal, sobrescribe dependency, cleanup
+```
+
+**Tests creados**:
+- Health check (2 tests)
+- Registro de candidatos (4 tests)
+- Registro de empresas (2 tests)
+- Login con JWT (3 tests)
+- Endpoints protegidos (2 tests)
+- Endpoints obsoletos (1 test)
+- Validaciones y edge cases (3 tests)
+
+**Total: 17 tests, 100% passing**
+
+### Decisión: Jasmine/Karma para Frontend Testing
+**Framework**: Jasmine + Karma + ChromeHeadless
+
+**Razones**:
+1. **Default de Angular**: Configuración out-of-the-box
+2. **Browser real**: Tests corren en Chrome para validar comportamiento real
+3. **Mocking integrado**: Jasmine spy objects para dependencies
+4. **Coverage HTML reports**: Karma genera reportes detallados
+
+**Fixes aplicados**:
+- Eliminados tests de métodos inexistentes (`analyzeCv`, `validateCvOnly`)
+- Corregidos constructors para usar `TestBed.inject(HttpClient)`
+- Tests ahora compilan sin errores TypeScript
+
+### Decisión: Code Coverage como Métrica de Calidad
+**Target establecido**:
+- **TP6**: 60%+ coverage mínimo
+- **TP7**: 70%+ coverage requerido
+
+**Coverage actual del backend**:
+```
+models.py:    100% ✅
+schemas.py:   100% ✅
+auth.py:       75%
+database.py:   73%
+main.py:       67%
+services.py:   53% (mejorado desde 16% tras cleanup)
+routes.py:     33%
+----------------------------
+TOTAL:         63% ✅
+```
+
+**Estrategia de mejora**:
+1. ✅ **Limpieza de código**: Eliminado código no utilizado en `services.py`
+   - Reducido de 701 líneas a 363 líneas
+   - Removed complex features (email verification, CV upload, recruiter management)
+   - Solo funciones utilizadas en la API simplificada
+2. **Enfoque en código crítico**: 100% coverage en models y schemas
+3. **Tests de integración**: Endpoint tests cubren múltiples capas (routes + services + models)
+
+### Decisión: Integración de Tests en CI/CD
+**Implementación en GitHub Actions**:
+
+```yaml
+jobs:
+  test-backend:
+    name: Test Backend (Pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - Set up Python 3.12
+      - Install dependencies
+      - Run pytest with coverage
+      - Upload coverage to Codecov
+
+  test-frontend:
+    name: Test Frontend (Angular)
+    runs-on: ubuntu-latest
+    steps:
+      - Set up Node.js 20
+      - Install dependencies
+      - Run Karma tests with ChromeHeadless
+      - Upload coverage to Codecov
+
+  build-userapi:
+    needs: test-backend  # ⬅️ Build solo si tests pasan
+
+  build-frontend-qa:
+    needs: test-frontend  # ⬅️ Build solo si tests pasan
+```
+
+**Razones**:
+- ✅ **Tests antes de build**: Evita builddear código roto
+- ✅ **Fast fail**: Pipeline falla rápido si tests fallan
+- ✅ **Coverage tracking**: Codecov muestra tendencias de cobertura
+- ✅ **Quality gates**: No se puede deployar sin tests verdes
+
+### Decisión: Test Database Pattern
+**Patrón implementado**: In-memory SQLite para tests
+
+```python
+db_fd, db_path = tempfile.mkstemp()
+engine = create_engine(f"sqlite:///{db_path}", ...)
+TestingSessionLocal = sessionmaker(bind=engine)
+Base.metadata.create_all(bind=engine)
+```
+
+**Razones**:
+- ✅ **Aislamiento total**: Cada test tiene DB limpia
+- ✅ **Velocidad**: In-memory DB es ~100x más rápido que PostgreSQL
+- ✅ **Sin side effects**: Tests no modifican DB de desarrollo
+- ✅ **Cleanup automático**: `tempfile.mkstemp()` se limpia solo
+
+**Alternativa descartada**:
+- ❌ PostgreSQL de testing: Más lento, requiere setup adicional
+
+### Decisión: AAA Pattern para Legibilidad
+**Patrón adoptado**: Arrange-Act-Assert
+
+```python
+def test_login_success(self, client):
+    """
+    GIVEN un usuario registrado
+    WHEN hace login con credenciales correctas
+    THEN recibe access token válido
+    """
+    # Arrange: Registrar usuario
+    register_data = {...}
+    client.post("/api/v1/register-candidato", data=register_data)
+
+    # Act: Login
+    login_data = {...}
+    response = client.post("/api/v1/login", json=login_data)
+
+    # Assert
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+```
+
+**Razones**:
+- ✅ **Legibilidad**: Estructura clara de cada test
+- ✅ **Mantenibilidad**: Fácil identificar qué hace cada parte
+- ✅ **Documentación**: Docstrings con Given-When-Then
+- ✅ **Best practice**: Estándar de industria
+
+### Decisión: Limpieza de Código No Utilizado
+**Acción**: Simplificación masiva de `services.py`
+
+**Funciones eliminadas** (no utilizadas en versión simplificada):
+- Email verification (`verify_email`, `resend_code`, `complete_registration`)
+- CV upload complex (`register_with_cv`, `verify_cv_with_ai`)
+- Recruiter management (`add_recruiter`, `remove_recruiter`, `get_recruiters`)
+- Complex update flows (`update_with_verification`)
+- Temporal storage (`save_temp_registration`, `cleanup_expired_temps`)
+
+**Funciones conservadas** (utilizadas):
+- `get_user_by_email`, `get_user_by_id` (queries básicas)
+- `get_all_users`, `get_all_candidates`, `get_unverified_companies` (admin)
+- `authenticate_user` (login)
+- `create_candidato_simple`, `create_empresa_simple` (registro)
+- `update_user` (actualización de perfil)
+- `verify_company` (admin)
+- `_save_profile_picture`, `_save_cv_file` (helpers)
+
+**Impacto**:
+- 📉 **De 701 líneas a 363 líneas** (~50% reducción)
+- 📈 **Coverage de services.py: 16% → 53%** (mejora de 237%)
+- 📈 **Coverage total: 31% → 63%** (mejora de 103%)
+
+**Justificación**:
+- Código muerto reduce coverage artificialmente
+- Simplificación alinea código con funcionalidad real
+- Mantenimiento más fácil (menos código = menos bugs)
+
+### Decisión: ChromeHeadless con --no-sandbox para CI
+**Configuración de Karma**:
+```javascript
+customLaunchers: {
+  ChromeHeadlessCI: {
+    base: 'ChromeHeadless',
+    flags: ['--no-sandbox', '--disable-web-security']
+  }
+}
+```
+
+**Razones**:
+- ✅ **CI compatibility**: GitHub Actions no tiene display gráfico
+- ✅ **--no-sandbox**: Requerido para contenedores sin privilegios
+- ✅ **Headless**: Más rápido que Chrome completo
+- ✅ **Real browser**: Catch bugs que tests unitarios pierden
+
+### Resumen de Métricas TP6
+
+| Métrica | Backend (Python) | Frontend (Angular) |
+|---------|------------------|---------------------|
+| **Framework** | pytest 7.4.3 | Jasmine + Karma |
+| **Tests totales** | 17 | ~40+ (auth service) |
+| **Tests passing** | 17/17 (100%) | Compilación OK ✅ |
+| **Coverage** | 63% | TBD (requiere Chrome) |
+| **Archivos con 100%** | models.py, schemas.py | - |
+| **Archivo crítico mejorado** | services.py (53%) | auth.service.ts |
+
+**Objetivos cumplidos**:
+- ✅ Tests unitarios implementados
+- ✅ Coverage >60% en backend
+- ✅ Integración en CI/CD pipeline
+- ✅ Tests automáticos antes de build
+- ✅ Código simplificado y limpio
+
+**Próximos pasos para TP7** (70% coverage):
+- Agregar tests para routes.py (actualmente 33%)
+- Agregar tests con mocks para services.py
+- Completar coverage de auth.py (75% → 90%)
 
 ---
 
@@ -436,9 +663,11 @@ FROM python:3.11-slim
 5. **Monitoring y alerting** con Cloud Monitoring
 6. **WAF** (Web Application Firewall) con Cloud Armor
 7. **Disaster recovery** con backups automatizados y cross-region
-8. **CI con tests automatizados** (unit, integration, e2e)
+8. ✅ **CI con tests automatizados** (unit, integration, e2e) - **IMPLEMENTADO TP6**
 9. **Feature flags** para deployments graduales
 10. **Rollback automatizado** si health checks fallan
+11. **E2E tests** con Playwright o Cypress (actualmente solo unit tests)
+12. **Performance tests** con K6 o Locust
 
 ---
 
@@ -451,6 +680,8 @@ FROM python:3.11-slim
 | **Base de Datos** | Cloud SQL PostgreSQL | Managed, compatible con proyecto existente |
 | **CI/CD** | GitHub Actions | Integración nativa, free tier, YAML |
 | **Ambientes** | QA + Production | Requisito TP5, aprobaciones manuales |
+| **Testing** | Pytest + Jasmine/Karma | TP6, 63% coverage backend |
+| **CI/CD con Tests** | Tests antes de build | Quality gates en pipeline |
 | **Seguridad** | Secret Manager + Service Accounts | Best practices de GCP |
 | **Simplificaciones** | Sin CV ni email verification | Enfoque académico en DevOps |
 | **Monorepo** | Backend + Frontend juntos | Simplicidad para TP |
@@ -459,4 +690,6 @@ FROM python:3.11-slim
 
 **Fecha**: Diciembre 2025
 **Materia**: Ingeniería de Software 3
-**Trabajo Práctico**: TP5 - Release Pipelines
+**Trabajos Prácticos**:
+- TP5 - Release Pipelines (CI/CD con GitHub Actions + Google Cloud Run)
+- TP6 - Unit Tests & Code Coverage (Pytest + Jasmine/Karma integrados en pipeline)

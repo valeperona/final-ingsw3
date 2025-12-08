@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { ActivatedRoute } from '@angular/router';
 
 import { VerifyAccountComponent } from './verify-account.component';
 
@@ -8,7 +10,10 @@ describe('VerifyAccountComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VerifyAccountComponent]
+      imports: [VerifyAccountComponent, HttpClientTestingModule],
+      providers: [
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } }
+      ]
     })
     .compileComponents();
 
