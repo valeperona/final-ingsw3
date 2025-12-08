@@ -34,7 +34,7 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
+        run: gcloud auth configure-docker gcr.io
 
       - name: Build UserAPI Docker image
         run: |
@@ -62,7 +62,7 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
+        run: gcloud auth configure-docker gcr.io
 
       - name: Build Frontend QA Docker image
         run: |
@@ -91,7 +91,7 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
+        run: gcloud auth configure-docker gcr.io
 
       - name: Build Frontend Production Docker image
         run: |
