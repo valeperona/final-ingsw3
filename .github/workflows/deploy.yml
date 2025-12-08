@@ -12,11 +12,16 @@ env:
   PROJECT_ID: final-ingsoft3-2025-480515
   REGION: us-central1
   REGISTRY_HOST: us-central1-docker.pkg.dev
+  REPOSITORY: cloud-run-source-deploy
 
 jobs:
   build-userapi:
     name: Build Backend Image
     runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: final-ingsoft3-2025-480515
+      REGION: us-central1
+      REGISTRY_HOST: us-central1-docker.pkg.dev
     outputs:
       image: ${{ steps.publish.outputs.image }}
     steps:
@@ -28,14 +33,14 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.PROJECT_ID }}
+          project_id: final-ingsoft3-2025-480515
 
       - name: Configure Docker auth
-        run: gcloud auth configure-docker ${{ env.REGISTRY_HOST }}
+        run: gcloud auth configure-docker $REGISTRY_HOST
 
       - id: vars
         run: |
-          IMAGE="${{ env.REGISTRY_HOST }}/${{ env.PROJECT_ID }}/cloud-run-source-deploy/userapi:${{ github.sha }}"
+          IMAGE="${REGISTRY_HOST}/${PROJECT_ID}/${REPOSITORY}/userapi:${GITHUB_SHA}"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Build backend image
@@ -48,41 +53,55 @@ jobs:
         run: echo "image=${{ steps.vars.outputs.image }}" >> $GITHUB_OUTPUT
 
   deploy-qa:
-    name: Deploy to QA
+    name: Deploy Backend to QA
     needs: build-userapi
     runs-on: ubuntu-latest
     environment:
       name: qa
-
     steps:
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Deploy to Cloud Run QA
-        uses: google-github-actions/deploy-cloudrun@v2
+      - uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: userapi-qa
           image: ${{ needs.build-userapi.outputs.image }}
-          region: ${{ env.REGION }}
-          flags: --allow-unauthenticated --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:userapi-db --service-account=userapi-service-account@${{ env.PROJECT_ID }}.iam.gserviceaccount.com --update-secrets=DATABASE_URL=DATABASE_URL:latest,SECRET_KEY=SECRET_KEY:latest,EMAIL_USER=EMAIL_USER:latest,EMAIL_PASSWORD=EMAIL_PASSWORD:latest,INTERNAL_SERVICE_API_KEY=INTERNAL_SERVICE_API_KEY:latest,ACCESS_TOKEN_EXPIRE_MINUTES=ACCESS_TOKEN_EXPIRE_MINUTES:latest,ALGORITHM=ALGORITHM:latest
+          region: us-central1
+          env_vars: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            EMAIL_USER=${{ secrets.EMAIL_USER }}
+            EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
+            INTERNAL_SERVICE_API_KEY=${{ secrets.INTERNAL_SERVICE_API_KEY }}
+            ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+            ALGORITHM=${{ secrets.ALGORITHM }}
+          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com
 
   deploy-production:
-    name: Deploy to Production
-    needs: [build-userapi, deploy-qa]
+    name: Deploy Backend to Production
+    needs:
+      - deploy-qa
+      - build-userapi
     runs-on: ubuntu-latest
     environment:
       name: production
-
     steps:
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Deploy to Cloud Run Production
-        uses: google-github-actions/deploy-cloudrun@v2
+      - uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: userapi
           image: ${{ needs.build-userapi.outputs.image }}
-          region: ${{ env.REGION }}
-          flags: --allow-unauthenticated --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:userapi-db --service-account=userapi-service-account@${{ env.PROJECT_ID }}.iam.gserviceaccount.com --update-secrets=DATABASE_URL=DATABASE_URL:latest,SECRET_KEY=SECRET_KEY:latest,EMAIL_USER=EMAIL_USER:latest,EMAIL_PASSWORD=EMAIL_PASSWORD:latest,INTERNAL_SERVICE_API_KEY=INTERNAL_SERVICE_API_KEY:latest,ACCESS_TOKEN_EXPIRE_MINUTES=ACCESS_TOKEN_EXPIRE_MINUTES:latest,ALGORITHM=ALGORITHM:latest
+          region: us-central1
+          env_vars: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            EMAIL_USER=${{ secrets.EMAIL_USER }}
+            EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
+            INTERNAL_SERVICE_API_KEY=${{ secrets.INTERNAL_SERVICE_API_KEY }}
+            ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+            ALGORITHM=${{ secrets.ALGORITHM }}
+          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com
