@@ -76,7 +76,7 @@ jobs:
             INTERNAL_SERVICE_API_KEY=${{ secrets.INTERNAL_SERVICE_API_KEY }}
             ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
             ALGORITHM=${{ secrets.ALGORITHM }}
-          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com
+          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com --clear-env-vars --clear-secrets
 
   deploy-production:
     name: Deploy Backend to Production
@@ -104,4 +104,4 @@ jobs:
             INTERNAL_SERVICE_API_KEY=${{ secrets.INTERNAL_SERVICE_API_KEY }}
             ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
             ALGORITHM=${{ secrets.ALGORITHM }}
-          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com
+          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com --clear-env-vars --clear-secrets
