@@ -33,19 +33,11 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker gcr.io
-
-      - name: Build UserAPI Docker image
+      - name: Build and Push UserAPI image
         run: |
-          docker build -t gcr.io/${{ env.GCP_PROJECT_ID }}/userapi:${{ github.sha }} \
-                       -t gcr.io/${{ env.GCP_PROJECT_ID }}/userapi:latest \
-                       ./APIs/UserAPI
-
-      - name: Push UserAPI image to GCR
-        run: |
-          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/userapi:${{ github.sha }}
-          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/userapi:latest
+          cd APIs/UserAPI
+          gcloud builds submit --tag gcr.io/${{ env.GCP_PROJECT_ID }}/userapi:${{ github.sha }}
+          gcloud builds submit --tag gcr.io/${{ env.GCP_PROJECT_ID }}/userapi:latest
 
   build-frontend-qa:
     name: Build Frontend QA
@@ -61,20 +53,26 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker gcr.io
-
-      - name: Build Frontend QA Docker image
+      - name: Build and Push Frontend QA image
         run: |
-          docker build --build-arg BUILD_ENV=qa \
-                       -t gcr.io/${{ env.GCP_PROJECT_ID }}/frontend-qa:${{ github.sha }} \
-                       -t gcr.io/${{ env.GCP_PROJECT_ID }}/frontend-qa:latest \
-                       ./tf-frontend
-
-      - name: Push Frontend QA image to GCR
-        run: |
-          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/frontend-qa:${{ github.sha }}
-          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/frontend-qa:latest
+          cd tf-frontend
+          cat > cloudbuild.yaml << 'EOF'
+          steps:
+            - name: 'gcr.io/cloud-builders/docker'
+              args:
+                - 'build'
+                - '--build-arg'
+                - 'BUILD_ENV=qa'
+                - '-t'
+                - 'gcr.io/$PROJECT_ID/frontend-qa:$SHORT_SHA'
+                - '-t'
+                - 'gcr.io/$PROJECT_ID/frontend-qa:latest'
+                - '.'
+          images:
+            - 'gcr.io/$PROJECT_ID/frontend-qa:$SHORT_SHA'
+            - 'gcr.io/$PROJECT_ID/frontend-qa:latest'
+          EOF
+          gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA=${{ github.sha }}
 
   build-frontend-prod:
     name: Build Frontend Production
@@ -90,20 +88,26 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker gcr.io
-
-      - name: Build Frontend Production Docker image
+      - name: Build and Push Frontend Production image
         run: |
-          docker build --build-arg BUILD_ENV=production \
-                       -t gcr.io/${{ env.GCP_PROJECT_ID }}/frontend:${{ github.sha }} \
-                       -t gcr.io/${{ env.GCP_PROJECT_ID }}/frontend:latest \
-                       ./tf-frontend
-
-      - name: Push Frontend Production image to GCR
-        run: |
-          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/frontend:${{ github.sha }}
-          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/frontend:latest
+          cd tf-frontend
+          cat > cloudbuild.yaml << 'EOF'
+          steps:
+            - name: 'gcr.io/cloud-builders/docker'
+              args:
+                - 'build'
+                - '--build-arg'
+                - 'BUILD_ENV=production'
+                - '-t'
+                - 'gcr.io/$PROJECT_ID/frontend:$SHORT_SHA'
+                - '-t'
+                - 'gcr.io/$PROJECT_ID/frontend:latest'
+                - '.'
+          images:
+            - 'gcr.io/$PROJECT_ID/frontend:$SHORT_SHA'
+            - 'gcr.io/$PROJECT_ID/frontend:latest'
+          EOF
+          gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA=${{ github.sha }}
 
   # ========================================
   # DEPLOY TO QA
