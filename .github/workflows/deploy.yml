@@ -63,6 +63,15 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Clear existing configuration
+        run: |
+          gcloud run services update userapi-qa \
+            --region=us-central1 \
+            --clear-env-vars \
+            --clear-secrets || true
+
       - uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: userapi-qa
@@ -76,7 +85,7 @@ jobs:
             INTERNAL_SERVICE_API_KEY=${{ secrets.INTERNAL_SERVICE_API_KEY }}
             ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
             ALGORITHM=${{ secrets.ALGORITHM }}
-          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com --clear-env-vars --clear-secrets
+          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com
 
   deploy-production:
     name: Deploy Backend to Production
@@ -91,6 +100,15 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Clear existing configuration
+        run: |
+          gcloud run services update userapi \
+            --region=us-central1 \
+            --clear-env-vars \
+            --clear-secrets || true
+
       - uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: userapi
@@ -104,4 +122,4 @@ jobs:
             INTERNAL_SERVICE_API_KEY=${{ secrets.INTERNAL_SERVICE_API_KEY }}
             ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
             ALGORITHM=${{ secrets.ALGORITHM }}
-          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com --clear-env-vars --clear-secrets
+          flags: --allow-unauthenticated --add-cloudsql-instances=final-ingsoft3-2025-480515:us-central1:userapi-db --service-account=userapi-service-account@final-ingsoft3-2025-480515.iam.gserviceaccount.com
