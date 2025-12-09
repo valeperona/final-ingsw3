@@ -281,7 +281,7 @@ async def get_my_recruiters(
 
 @router.delete("/companies/remove-recruiter")
 async def remove_recruiter_from_company(
-    recruiter_id: int,
+    recruiter_email: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -289,9 +289,14 @@ async def remove_recruiter_from_company(
     if current_user.role != UserRoleEnum.empresa:
         raise HTTPException(status_code=403, detail="Solo empresas")
 
+    # Buscar el recruiter por email
+    recruiter = db.query(User).filter(User.email == recruiter_email).first()
+    if not recruiter:
+        raise HTTPException(status_code=404, detail="Recruiter no encontrado")
+
     relation = db.query(CompanyRecruiter).filter(
         CompanyRecruiter.company_id == current_user.id,
-        CompanyRecruiter.recruiter_id == recruiter_id
+        CompanyRecruiter.recruiter_id == recruiter.id
     ).first()
 
     if not relation:
@@ -326,6 +331,27 @@ async def get_recruiting_for(
             })
 
     return {"companies": companies}
+
+@router.delete("/me/resign-from-company/{company_id}")
+async def resign_from_company(
+    company_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Permite a un recruiter renunciar de una empresa"""
+    # Buscar la relación
+    relation = db.query(CompanyRecruiter).filter(
+        CompanyRecruiter.company_id == company_id,
+        CompanyRecruiter.recruiter_id == current_user.id
+    ).first()
+
+    if not relation:
+        raise HTTPException(status_code=404, detail="No eres recruiter de esta empresa")
+
+    db.delete(relation)
+    db.commit()
+
+    return {"message": "Has renunciado exitosamente como recruiter"}
 
 # =====================================================
 # ENDPOINT INTERNO (Para JobsAPI y otros servicios)

@@ -768,22 +768,78 @@ class TestRecruiters:
             headers={"Authorization": f"Bearer {token}"}
         )
 
-        # Obtener ID del recruiter
-        login_rec = client.post("/api/v1/login", json={
-            "email": "recruiter@test.com",
-            "password": "TestPass123!"
-        })
-        recruiter_id = login_rec.json()["user"]["id"]
-
-        # Eliminar recruiter
+        # Eliminar recruiter usando email
         response = client.delete(
             "/api/v1/companies/remove-recruiter",
-            params={"recruiter_id": recruiter_id},
+            params={"recruiter_email": "recruiter@test.com"},
             headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 200
         assert "eliminado exitosamente" in response.json()["message"]
+
+    def test_recruiter_resign_from_company(self, client):
+        """
+        GIVEN un recruiter asignado a una empresa
+        WHEN renuncia
+        THEN la relación se elimina
+        """
+        # Registrar empresa
+        client.post("/api/v1/register-empresa", data={
+            "email": "empresa@test.com",
+            "password": "TestPass123!",
+            "nombre": "Tech Corp",
+            "descripcion": "Tech company"
+        })
+
+        # Registrar candidato
+        client.post("/api/v1/register-candidato", data={
+            "email": "recruiter@test.com",
+            "password": "TestPass123!",
+            "nombre": "Recruiter",
+            "apellido": "Test",
+            "genero": "masculino",
+            "fecha_nacimiento": "1990-01-01"
+        })
+
+        # Login como empresa y asignar recruiter
+        empresa_login = client.post("/api/v1/login", json={
+            "email": "empresa@test.com",
+            "password": "TestPass123!"
+        })
+        empresa_token = empresa_login.json()["access_token"]
+        company_id = empresa_login.json()["user"]["id"]
+
+        client.post(
+            "/api/v1/companies/add-recruiter",
+            params={"recruiter_email": "recruiter@test.com"},
+            headers={"Authorization": f"Bearer {empresa_token}"}
+        )
+
+        # Login como recruiter
+        recruiter_login = client.post("/api/v1/login", json={
+            "email": "recruiter@test.com",
+            "password": "TestPass123!"
+        })
+        recruiter_token = recruiter_login.json()["access_token"]
+
+        # Renunciar
+        response = client.delete(
+            f"/api/v1/me/resign-from-company/{company_id}",
+            headers={"Authorization": f"Bearer {recruiter_token}"}
+        )
+
+        assert response.status_code == 200
+        assert "renunciado exitosamente" in response.json()["message"]
+
+        # Verificar que ya no es recruiter
+        response = client.get(
+            "/api/v1/me/recruiting-for",
+            headers={"Authorization": f"Bearer {recruiter_token}"}
+        )
+        assert response.status_code == 200
+        companies = response.json()["companies"]
+        assert len(companies) == 0
 
     def test_candidato_cannot_add_recruiter(self, client):
         """
