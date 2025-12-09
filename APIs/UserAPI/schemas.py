@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date, datetime
 from typing import Optional
 from models import GenderEnum, UserRoleEnum
@@ -33,7 +33,7 @@ class UserResponse(BaseModel):
     email: str
     nombre: str
     role: UserRoleEnum
-    verified: bool
+    verified: bool = Field(alias='email_verified')
     profile_picture: Optional[str] = None
     # Campos opcionales según el rol
     apellido: Optional[str] = None
@@ -44,6 +44,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 # =====================================================
 # SCHEMAS PARA ACTUALIZACIÓN
