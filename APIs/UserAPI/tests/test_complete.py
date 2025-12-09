@@ -671,7 +671,8 @@ class TestRecruiters:
         )
 
         assert response.status_code == 200
-        recruiters = response.json()
+        data = response.json()
+        recruiters = data["recruiters"]
         assert len(recruiters) == 1
         assert recruiters[0]["email"] == "recruiter@test.com"
 
@@ -725,7 +726,8 @@ class TestRecruiters:
         )
 
         assert response.status_code == 200
-        companies = response.json()
+        data = response.json()
+        companies = data["companies"]
         assert len(companies) == 1
         assert companies[0]["email"] == "empresa@test.com"
 
