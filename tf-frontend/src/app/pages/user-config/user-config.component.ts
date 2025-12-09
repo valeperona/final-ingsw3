@@ -64,7 +64,8 @@ export class UserConfigComponent {
 
   // Validación de email
   isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Regex seguro sin backtracking: limita longitud y usa patrones específicos
+    const emailRegex = /^[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]{1,253}\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);
   }
 

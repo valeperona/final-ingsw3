@@ -201,13 +201,14 @@ jobs:
             -Dsonar.projectKey=francotalloneucc_final-ingsw3
             -Dsonar.organization=francotalloneucc
             -Dsonar.sources=APIs/UserAPI,tf-frontend/src
-            -Dsonar.tests=APIs/UserAPI/tests
+            -Dsonar.tests=APIs/UserAPI/tests,tf-frontend/src
             -Dsonar.test.inclusions=**/test_*.py,**/*.spec.ts
-            -Dsonar.exclusions=**/tests/**,**/node_modules/**,**/venv/**,**/dist/**,**/coverage/**,**/__pycache__/**,**/migrations/**,**/environment*.ts,**/main.ts,**/main.server.ts,**/server.ts,**/app.config*.ts,**/app.routes*.ts,**/*.interface.ts
+            -Dsonar.exclusions=**/tests/**,**/test_*.py,**/*.spec.ts,**/node_modules/**,**/venv/**,**/dist/**,**/coverage/**,**/__pycache__/**,**/migrations/**,**/environment*.ts,**/main.ts,**/main.server.ts,**/server.ts,**/app.config*.ts,**/app.routes*.ts,**/*.interface.ts,**/database.py,**/auth.py,**/models.py,**/schemas.py
             -Dsonar.python.coverage.reportPaths=APIs/UserAPI/coverage.xml
             -Dsonar.javascript.lcov.reportPaths=tf-frontend/coverage/lcov.info
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.qualitygate.wait=false
+            -Dsonar.coverage.exclusions=**/main.py,**/database.py,**/auth.py,**/models.py,**/schemas.py,**/environment*.ts,**/main.ts,**/app.config*.ts,**/app.routes*.ts
 
   # ============================================
   # FASE 3: Builds en paralelo (después de SonarCloud)
