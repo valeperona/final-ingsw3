@@ -33,7 +33,7 @@ class UserResponse(BaseModel):
     email: str
     nombre: str
     role: UserRoleEnum
-    verified: bool = Field(alias='email_verified')
+    verified: bool = Field(validation_alias='email_verified')
     profile_picture: Optional[str] = None
     # Campos opcionales según el rol
     apellido: Optional[str] = None
@@ -44,7 +44,6 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        populate_by_name = True
 
 # =====================================================
 # SCHEMAS PARA ACTUALIZACIÓN
