@@ -97,9 +97,12 @@ jobs:
             echo "TN:" > tf-frontend/coverage/tf-frontend/lcov.info
             echo "SF:placeholder.ts" >> tf-frontend/coverage/tf-frontend/lcov.info
             echo "end_of_record" >> tf-frontend/coverage/tf-frontend/lcov.info
-            echo "⚠️  Created placeholder lcov.info"
+            echo "⚠️⚠️⚠️ PLACEHOLDER CREATED - Frontend coverage NOT available ⚠️⚠️⚠️"
+            echo "frontend_coverage_status=placeholder" >> $GITHUB_ENV
           else
-            echo "✅ lcov.info found"
+            echo "✅✅✅ REAL lcov.info found - Frontend coverage available ✅✅✅"
+            wc -l tf-frontend/coverage/tf-frontend/lcov.info
+            echo "frontend_coverage_status=real" >> $GITHUB_ENV
           fi
 
       - name: Upload coverage reports to Codecov
@@ -160,9 +163,16 @@ jobs:
           # Copiar frontend coverage (opcional)
           if [ -f artifacts/frontend/lcov.info ]; then
             cp artifacts/frontend/lcov.info tf-frontend/coverage/lcov.info
-            echo "✅ Frontend coverage copied"
+
+            # Verificar si es placeholder o real
+            LINE_COUNT=$(wc -l < tf-frontend/coverage/lcov.info)
+            if [ "$LINE_COUNT" -eq 3 ]; then
+              echo "⚠️⚠️⚠️ PLACEHOLDER detected (3 lines) - No real frontend coverage ⚠️⚠️⚠️"
+            else
+              echo "✅✅✅ REAL frontend coverage ($LINE_COUNT lines) ✅✅✅"
+            fi
           else
-            echo "⚠️  Frontend coverage not available, creating placeholder"
+            echo "⚠️⚠️⚠️ Frontend coverage artifact not found, creating placeholder ⚠️⚠️⚠️"
             echo "TN:" > tf-frontend/coverage/lcov.info
             echo "SF:placeholder.ts" >> tf-frontend/coverage/lcov.info
             echo "end_of_record" >> tf-frontend/coverage/lcov.info
