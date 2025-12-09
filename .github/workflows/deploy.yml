@@ -180,14 +180,21 @@ jobs:
 
       - name: Verify coverage reports
         run: |
+          echo "=== Backend coverage.xml ==="
           ls -la APIs/UserAPI/coverage.xml
+          head -30 APIs/UserAPI/coverage.xml
+          echo ""
+          echo "=== Frontend lcov.info ==="
           ls -la tf-frontend/coverage/lcov.info
+          head -30 tf-frontend/coverage/lcov.info
+          echo ""
           if [ ! -s APIs/UserAPI/coverage.xml ]; then
             echo "backend coverage.xml not found or empty"; exit 1;
           fi
           if [ ! -s tf-frontend/coverage/lcov.info ]; then
             echo "frontend lcov.info not found or empty"; exit 1;
           fi
+          echo "✅ Coverage files verified"
 
       - name: SonarCloud Scan
         if: ${{ env.SONAR_TOKEN != '' }}
