@@ -127,14 +127,30 @@ jobs:
       - name: Normalize coverage paths
         run: |
           mkdir -p APIs/UserAPI tf-frontend/coverage
-          BACKEND_COV=$(find artifacts/backend -name 'coverage.xml' | head -n1)
-          FRONTEND_LCOV=$(find artifacts/frontend -name 'lcov.info' | head -n1)
+
+          # Debug: Ver estructura de artefactos
+          echo "=== Backend artifacts ==="
+          find artifacts/backend -type f
+          echo "=== Frontend artifacts ==="
+          find artifacts/frontend -type f
+
+          # Buscar archivos de coverage
+          BACKEND_COV=$(find artifacts/backend -name 'coverage.xml' -type f | head -n1)
+          FRONTEND_LCOV=$(find artifacts/frontend -name 'lcov.info' -type f | head -n1)
+
+          # Verificar backend
           if [ -z "$BACKEND_COV" ]; then
-            echo "backend coverage.xml not found in artifacts"; exit 1;
+            echo "❌ backend coverage.xml not found in artifacts"; exit 1;
           fi
+          echo "✅ Found backend coverage: $BACKEND_COV"
+
+          # Verificar frontend
           if [ -z "$FRONTEND_LCOV" ]; then
-            echo "frontend lcov.info not found in artifacts"; exit 1;
+            echo "❌ frontend lcov.info not found in artifacts"; exit 1;
           fi
+          echo "✅ Found frontend coverage: $FRONTEND_LCOV"
+
+          # Copiar archivos
           cp "$BACKEND_COV" APIs/UserAPI/coverage.xml
           cp "$FRONTEND_LCOV" tf-frontend/coverage/lcov.info
 
