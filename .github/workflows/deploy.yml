@@ -79,7 +79,7 @@ jobs:
           CHROME_BIN: /usr/bin/google-chrome
         run: |
           cd tf-frontend
-          ng test --no-watch --code-coverage --browsers=ChromeHeadlessNoSandbox
+          npx ng test --no-watch --code-coverage --browsers=ChromeHeadlessNoSandbox
 
       - name: Verify and generate lcov.info
         run: |
