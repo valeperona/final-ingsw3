@@ -153,7 +153,7 @@ jobs:
           fi
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarcloud-github-action@v3.0.0
         continue-on-error: true  # No bloquear el pipeline si falla el Quality Gate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
