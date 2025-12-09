@@ -277,7 +277,7 @@ async def get_my_recruiters(
                 "assigned_at": rel.assigned_at
             })
 
-    return recruiters
+    return {"recruiters": recruiters}
 
 @router.delete("/companies/remove-recruiter")
 async def remove_recruiter_from_company(
@@ -325,7 +325,7 @@ async def get_recruiting_for(
                 "assigned_at": rel.assigned_at
             })
 
-    return companies
+    return {"companies": companies}
 
 # =====================================================
 # ENDPOINT INTERNO (Para JobsAPI y otros servicios)
