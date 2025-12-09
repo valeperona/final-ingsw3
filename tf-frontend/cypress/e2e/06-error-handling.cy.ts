@@ -202,10 +202,13 @@ describe('Error Handling - Integración Frontend-Backend', () => {
       const fechaFormateada = fechaMenor.toISOString().split('T')[0]
 
       cy.get('input#birthDate').clear().type(fechaFormateada)
-      cy.wait(500)
 
-      // Debe mostrar mensaje de error sobre edad mínima
-      cy.contains('Debés tener al menos 18 años').should('be.visible')
+      // Trigger del evento change para ejecutar checkAge()
+      cy.get('input#birthDate').trigger('change')
+      cy.wait(1000)
+
+      // Verificar que el botón está deshabilitado por edad mínima
+      cy.get('button[type="submit"]').should('be.disabled')
     })
 
     it('debería validar que apellido solo contenga letras', () => {

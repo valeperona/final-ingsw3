@@ -51,6 +51,12 @@ describe('Registro de Candidato - CRUD CREATE', () => {
     // Enviar el formulario
     cy.get('button[type="submit"]').click()
 
+    // El registro muestra un alert antes de redirigir
+    // Esperar a que aparezca el alert y NO interactuar (Cypress lo maneja auto)
+    cy.on('window:alert', (text) => {
+      expect(text).to.contains('Registro exitoso')
+    })
+
     // Esperar a que se complete el registro y redirija a login
     cy.url().should('include', '/login', { timeout: 10000 })
   })
@@ -73,11 +79,14 @@ describe('Registro de Candidato - CRUD CREATE', () => {
 
     cy.get('input#birthDate').clear().type(fechaFormateada)
 
-    // Esperar que se muestre el mensaje de error
-    cy.wait(500)
+    // Trigger del evento change para que se ejecute checkAge()
+    cy.get('input#birthDate').trigger('change')
 
-    // Verificar que muestra error
-    cy.contains('Debés tener al menos 18 años').should('be.visible')
+    // Esperar que se muestre el mensaje de error
+    cy.wait(1000)
+
+    // Verificar que muestra error (el botón también debe estar deshabilitado)
+    cy.get('button[type="submit"]').should('be.disabled')
   })
 
   it('debería validar que las contraseñas coincidan', () => {

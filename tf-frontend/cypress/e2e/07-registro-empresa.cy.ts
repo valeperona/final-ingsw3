@@ -54,6 +54,11 @@ describe('Registro de Empresa - CRUD CREATE', () => {
     // Enviar el formulario
     cy.get('button[type="submit"]').click()
 
+    // Manejar el alert de registro exitoso
+    cy.on('window:alert', (text) => {
+      expect(text).to.contains('registrada exitosamente')
+    })
+
     // Verificar redirección exitosa
     cy.url().should('include', '/login', { timeout: 10000 })
   })
@@ -166,15 +171,17 @@ describe('Registro de Empresa - CRUD CREATE', () => {
     cy.contains('button', 'Empresa').click()
 
     cy.get('input#email').type('empresa@test.com')
+    cy.get('input#nombre').type('Mi Empresa')
+    cy.get('textarea#descripcion').type('Descripción de la empresa')
     cy.get('input#password').type('123') // Muy corta
     cy.get('input#confirmPassword').type('123')
-    cy.get('input#nombre').type('Mi Empresa')
-    cy.get('textarea#descripcion').type('Descripción')
 
     cy.wait(500)
 
     // Debe mostrar mensaje de error
     cy.contains('La contraseña debe tener al menos 6 caracteres').should('be.visible')
+
+    // El botón debe estar deshabilitado (por isFormValid que verifica length < 6)
     cy.get('button[type="submit"]').should('be.disabled')
   })
 })

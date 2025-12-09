@@ -22,6 +22,12 @@ describe('Editar Perfil de Usuario - CRUD UPDATE', () => {
     cy.get('select#gender').select('masculino')
     cy.get('input#birthDate').type('1990-01-15')
     cy.get('button[type="submit"]').click()
+
+    // Manejar el alert de registro exitoso
+    cy.on('window:alert', (text) => {
+      expect(text).to.contains('Registro exitoso')
+    })
+
     cy.url().should('include', '/login', { timeout: 10000 })
   })
 
