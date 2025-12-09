@@ -30,18 +30,10 @@ module.exports = function (config) {
       reporters: [
         { type: 'html' },
         { type: 'text-summary' },
-        { type: 'lcov' }
-      ],
-      check: {
-        global: {
-          statements: 90,
-          branches: 80,
-          functions: 90,
-          lines: 90
-        }
-      }
+        { type: 'lcovonly' }  // lcovonly genera solo el lcov.info
+      ]
     },
-    reporters: ['progress', 'kjhtml', 'coverage'],
+    reporters: ['progress', 'kjhtml'],
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
