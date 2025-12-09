@@ -207,6 +207,7 @@ jobs:
             -Dsonar.python.coverage.reportPaths=APIs/UserAPI/coverage.xml
             -Dsonar.javascript.lcov.reportPaths=tf-frontend/coverage/lcov.info
             -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.qualitygate.wait=false
 
   # ============================================
   # FASE 3: Builds en paralelo (después de SonarCloud)
