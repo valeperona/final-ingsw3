@@ -32,10 +32,36 @@ describe('Registro de Empresa - CRUD CREATE', () => {
     cy.get('select#gender').should('not.exist')
   })
 
-  // Test deshabilitado: depende del backend de QA que puede no estar disponible
-  // it('debería crear una empresa completa con todos los campos', () => {
-  //   ...
-  // })
+  it('debería crear una empresa completa con todos los campos', () => {
+    // Seleccionar tipo de usuario: Empresa
+    cy.contains('button', 'Empresa').click()
+
+    // Llenar datos comunes
+    cy.get('input#email').clear().type(empresa.email)
+    cy.get('input#password').clear().type(empresa.password)
+    cy.get('input#confirmPassword').clear().type(empresa.password)
+    cy.get('input#nombre').clear().type(empresa.nombre)
+
+    // Llenar datos específicos de empresa
+    cy.get('textarea#descripcion').clear().type(empresa.descripcion)
+
+    // Esperar un momento para que las validaciones se procesen
+    cy.wait(500)
+
+    // Verificar que el botón de registro esté habilitado
+    cy.get('button[type="submit"]').should('not.be.disabled')
+
+    // Enviar el formulario
+    cy.get('button[type="submit"]').click()
+
+    // Manejar el alert de registro exitoso
+    cy.on('window:alert', (text) => {
+      expect(text).to.contains('registrada exitosamente')
+    })
+
+    // Verificar redirección exitosa
+    cy.url().should('include', '/login', { timeout: 10000 })
+  })
 
   it('debería alternar entre tipo candidato y empresa', () => {
     // Primero seleccionar Candidato
