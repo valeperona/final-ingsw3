@@ -11,6 +11,10 @@ describe('Registro de Candidato - CRUD CREATE', () => {
 
   beforeEach(() => {
     cy.visit('/register')
+    // Stub del window.alert para todos los tests
+    cy.window().then((win) => {
+      cy.stub(win, 'alert').as('windowAlert')
+    })
   })
 
   it('debería mostrar el formulario de registro', () => {
@@ -51,11 +55,8 @@ describe('Registro de Candidato - CRUD CREATE', () => {
     // Enviar el formulario
     cy.get('button[type="submit"]').click()
 
-    // El registro muestra un alert antes de redirigir
-    // Esperar a que aparezca el alert y NO interactuar (Cypress lo maneja auto)
-    cy.on('window:alert', (text) => {
-      expect(text).to.contains('Registro exitoso')
-    })
+    // Esperar a que se llame al alert con el mensaje de éxito
+    cy.get('@windowAlert').should('have.been.calledWith', '¡Registro exitoso! Ya puedes iniciar sesión.')
 
     // Esperar a que se complete el registro y redirija a login
     cy.url().should('include', '/login', { timeout: 10000 })

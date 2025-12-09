@@ -13,6 +13,12 @@ describe('Editar Perfil de Usuario - CRUD UPDATE', () => {
   before(() => {
     // Crear un usuario de prueba primero
     cy.visit('/register')
+
+    // Stub del window.alert para capturar el mensaje sin bloquear
+    cy.window().then((win) => {
+      cy.stub(win, 'alert').as('windowAlert')
+    })
+
     cy.contains('button', 'Candidato').click()
     cy.get('input#email').type(testUser.email)
     cy.get('input#password').type(testUser.password)
@@ -23,11 +29,10 @@ describe('Editar Perfil de Usuario - CRUD UPDATE', () => {
     cy.get('input#birthDate').type('1990-01-15')
     cy.get('button[type="submit"]').click()
 
-    // Manejar el alert de registro exitoso
-    cy.on('window:alert', (text) => {
-      expect(text).to.contains('Registro exitoso')
-    })
+    // Esperar a que se llame al alert con el mensaje de éxito
+    cy.get('@windowAlert').should('have.been.calledWith', '¡Registro exitoso! Ya puedes iniciar sesión.')
 
+    // Esperar a que se complete el registro y redirija a login
     cy.url().should('include', '/login', { timeout: 10000 })
   })
 
