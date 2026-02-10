@@ -26,6 +26,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
+def get_allowed_origins() -> list[str]:
+    """Build explicit CORS origins from defaults + environment variable."""
+    origins = [
+        "http://localhost:4200",
+    ]
+    extra_origins = os.getenv("ALLOWED_ORIGINS", "")
+    if extra_origins:
+        origins.extend([origin.strip() for origin in extra_origins.split(",") if origin.strip()])
+    return origins
+
+ALLOWED_ORIGINS = get_allowed_origins()
+ALLOW_ORIGIN_REGEX = (
+    r"^https://frontend(-qa)?-[a-z0-9-]+(\.us-central1\.run\.app|-uc\.a\.run\.app)$"
+)
+
 # ⭐ EVENTO DE STARTUP - Simplificado para versión de deployment
 @app.on_event("startup")
 async def startup_event():
@@ -33,9 +48,9 @@ async def startup_event():
     print("🚀 Iniciando UserAPI...")
     print("✅ UserAPI iniciada correctamente")
     print("📋 CORS permitido para:")
-    print("   - http://localhost:4200")
-    print("   - https://frontend-qa-737714447258.us-central1.run.app")
-    print("   - https://frontend-737714447258.us-central1.run.app")
+    for origin in ALLOWED_ORIGINS:
+        print(f"   - {origin}")
+    print(f"📋 CORS regex permitido: {ALLOW_ORIGIN_REGEX}")
 
 # Middleware para logging de requests
 @app.middleware("http")
@@ -49,11 +64,8 @@ async def log_requests(request: Request, call_next):
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:4200",  # Desarrollo local
-        "https://frontend-qa-737714447258.us-central1.run.app",  # QA
-        "https://frontend-737714447258.us-central1.run.app",  # Producción
-    ],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOW_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],  # Permitir todos los métodos
     allow_headers=["*"],
