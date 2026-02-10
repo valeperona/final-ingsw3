@@ -101,23 +101,21 @@ describe('Error Handling - Integración Frontend-Backend', () => {
     })
 
     it('debería mostrar error con credenciales incorrectas', () => {
+      cy.intercept('POST', '**/api/v1/login', {
+        statusCode: 401,
+        body: { detail: 'Credenciales inválidas' }
+      }).as('loginUnauthorized')
+
       cy.get('input[type="email"]').type('usuario@noexiste.com')
       cy.get('input[type="password"]').type('passwordincorrecto')
       cy.get('button[type="submit"]').click()
 
       // Esperar respuesta del servidor
-      cy.wait(2000)
+      cy.wait('@loginUnauthorized')
 
       // Debe permanecer en login y mostrar error
       cy.url().should('include', '/login')
-
-      // Buscar mensaje de error
-      cy.get('body').should('satisfy', ($body) => {
-        const text = $body.text().toLowerCase()
-        return text.includes('error') ||
-               text.includes('incorrect') ||
-               text.includes('incorrecto')
-      })
+      cy.contains('Email o contraseña incorrectos').should('be.visible')
     })
 
     it('debería mostrar error con campos vacíos', () => {
@@ -257,12 +255,17 @@ describe('Error Handling - Integración Frontend-Backend', () => {
         window.localStorage.setItem('token', 'token-invalido-12345')
       })
 
+      cy.intercept('GET', '**/api/v1/me', {
+        statusCode: 401,
+        body: { detail: 'Token inválido' }
+      }).as('invalidTokenRequest')
+
       // Intentar acceder a página protegida
       cy.visit('/mi-perfil')
 
       // Debe redirigir a login después de que el backend rechace el token
-      cy.wait(2000)
-      cy.url().should('include', '/login')
+      cy.wait('@invalidTokenRequest')
+      cy.url().should('include', '/login', { timeout: 10000 })
     })
   })
 

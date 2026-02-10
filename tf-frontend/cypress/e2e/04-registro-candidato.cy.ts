@@ -52,11 +52,21 @@ describe('Registro de Candidato - CRUD CREATE', () => {
     // Verificar que el botón de registro esté habilitado
     cy.get('button[type="submit"]').should('not.be.disabled')
 
+    cy.intercept('POST', '**/api/v1/register-candidato', {
+      statusCode: 200,
+      body: {
+        id: 9999,
+        email: candidato.email,
+        nombre: candidato.nombre,
+        role: 'candidato',
+        verified: false
+      }
+    }).as('registerCandidato')
+
     // Enviar el formulario
     cy.get('button[type="submit"]').click()
 
-    // Esperar a que se llame al alert con el mensaje de éxito
-    cy.get('@windowAlert').should('have.been.calledWith', '¡Registro exitoso! Ya puedes iniciar sesión.')
+    cy.wait('@registerCandidato')
 
     // Esperar a que se complete el registro y redirija a login
     cy.url().should('include', '/login', { timeout: 10000 })

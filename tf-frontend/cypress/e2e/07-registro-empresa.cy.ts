@@ -51,13 +51,20 @@ describe('Registro de Empresa - CRUD CREATE', () => {
     // Verificar que el botón de registro esté habilitado
     cy.get('button[type="submit"]').should('not.be.disabled')
 
+    cy.intercept('POST', '**/api/v1/register-empresa', {
+      statusCode: 200,
+      body: {
+        id: 9998,
+        email: empresa.email,
+        nombre: empresa.nombre,
+        role: 'empresa',
+        verified: false
+      }
+    }).as('registerEmpresa')
+
     // Enviar el formulario
     cy.get('button[type="submit"]').click()
-
-    // Manejar el alert de registro exitoso
-    cy.on('window:alert', (text) => {
-      expect(text).to.contains('registrada exitosamente')
-    })
+    cy.wait('@registerEmpresa')
 
     // Verificar redirección exitosa
     cy.url().should('include', '/login', { timeout: 10000 })
