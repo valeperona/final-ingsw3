@@ -13,6 +13,7 @@ export const routes: Routes = [
   // Autenticación
   { path: 'login', component: LoginComponent },
   { path: 'register', component: UserConfigComponent }, // Registro completo con todos los campos
+  { path: 'user-config', redirectTo: 'register' }, // Compatibilidad con enlaces antiguos
 
   // Mi perfil
   { path: 'mi-perfil', component: MyUserComponent },
