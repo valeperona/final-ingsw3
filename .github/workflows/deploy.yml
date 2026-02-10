@@ -18,7 +18,7 @@ jobs:
   # ============================================
   # FASE 1: Tests en paralelo
   # ============================================
-  test-backend:
+  test-backend: 
     name: Test Backend (Pytest)
     runs-on: ubuntu-latest
     steps:
