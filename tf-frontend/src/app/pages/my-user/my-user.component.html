@@ -20,7 +20,7 @@
       <div class="profile-title-section">
         <div class="profile-heading-block">
           <h2>Perfil de {{ user.role === 'candidato' ? 'Candidato' : user.role === 'empresa' ? 'Empresa' : 'Administrador' }}</h2>
-          <p class="profile-subtitle">Mantén tu información actualizada para una mejor experiencia.</p>
+          <p class="profile-subtitle">Revisa y actualiza tus datos cuando lo necesites.</p>
         </div>
         <!-- Badge de recruiter para candidatos -->
         <div *ngIf="user.role === 'candidato' && isRecruiter()" class="badge badge-recruiter">
