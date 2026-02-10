@@ -18,7 +18,7 @@ Este reporte presenta el análisis completo de la suite de tests unitarios imple
 
 **Estado**: 36/36 tests pasando (100%)
 
-#### Archivos de Test Creados:
+#### Archivos de Test Creados :
 ```
 APIs/CvAnalyzerAPI/tests/
 ├── test_main.py          (8 tests)  - Endpoints FastAPI
