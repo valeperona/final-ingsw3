@@ -27,11 +27,24 @@
   gap: 20px;
 }
 
+.profile-heading-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .profile-title-section h2 {
   margin: 0;
   font-size: 2rem;
   font-weight: 600;
   color: #333;
+}
+
+.profile-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #6c757d;
+  font-weight: 500;
 }
 
 .badge {

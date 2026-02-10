@@ -18,7 +18,10 @@
     <!-- Header mejorado -->
     <div class="profile-header">
       <div class="profile-title-section">
-        <h2>Perfil de {{ user.role === 'candidato' ? 'Candidato' : user.role === 'empresa' ? 'Empresa' : 'Administrador' }}</h2>
+        <div class="profile-heading-block">
+          <h2>Perfil de {{ user.role === 'candidato' ? 'Candidato' : user.role === 'empresa' ? 'Empresa' : 'Administrador' }}</h2>
+          <p class="profile-subtitle">Mantén tu información actualizada para una mejor experiencia.</p>
+        </div>
         <!-- Badge de recruiter para candidatos -->
         <div *ngIf="user.role === 'candidato' && isRecruiter()" class="badge badge-recruiter">
           <i class="bi bi-person-workspace me-1"></i> RECRUITER
